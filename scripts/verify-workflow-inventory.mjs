@@ -10,4 +10,11 @@ assert.ok(!jobs.includes('push') && !jobs.includes('workflow_dispatch'), 'Workfl
 for (const job of jobs) assert.ok(inventory.includes(`\`${job}\``), `Dependency inventory is missing ${job}`);
 assert.ok(workflow.includes('actions/setup-node@v4'));
 assert.ok(workflow.includes('npm ci --no-audit --no-fund'));
+assert.match(workflow, /push:\r?\n    branches:\r?\n      - main/, 'Release workflow pushes must be limited to main so release tags cannot trigger loops.');
+const jobPreamble = workflow.slice(workflow.indexOf('jobs:'), workflow.indexOf('    steps:'));
+assert.ok(!jobPreamble.includes('GH_TOKEN:'), 'Release credentials must not exist at job scope where electron-builder can auto-publish.');
+const publishStep = workflow.slice(workflow.indexOf('- name: Publish one immutable release for this run'), workflow.indexOf('- name: Collect safe build outputs'));
+assert.ok(publishStep.includes('GH_TOKEN:'), 'Release credentials must be scoped to the explicit publication step.');
+assert.ok(publishStep.includes('--draft'), 'Publication must start from a private draft.');
+assert.ok(publishStep.includes('releases/$releaseId'), 'Draft finalization must use the exact numeric release ID.');
 console.log(`PASS: ${jobs.length} workflow job has an explicit dependency inventory and cache-miss bootstrap path.`);

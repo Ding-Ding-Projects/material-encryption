@@ -2,6 +2,8 @@
 
 A Material Design 3 desktop interface for a locally installed copy of [VeraCrypt](https://www.veracrypt.fr/). Material Encryption keeps VeraCrypt as the cryptographic authority while making its volume, favorites, creation, properties, security, tools, preferences, history, lock, authenticator, support, and settings workflows easier to discover.
 
+[Documentation site](https://ding-ding-projects.github.io/material-encryption/) · [Latest verified release](https://github.com/Ding-Ding-Projects/material-encryption/releases/latest)
+
 > [!IMPORTANT]
 > This project is independent from VeraCrypt. It never bundles VeraCrypt, never implements cryptography, and never places a volume password on a process command line. VeraCrypt must be installed separately.
 

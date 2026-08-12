@@ -13,4 +13,8 @@ Material Encryption is an independent Windows Electron interface generated from 
 
 ## Remaining release work
 
-Remote run `31561973251` built successfully but its evidence collection failed because the setup filename glob expected `*Setup.exe`; the follow-up commit accepts the configured `Setup-<version>-<arch>.exe` shape. First-release publication, remote asset verification, and the final cleanup audit remain pending.
+Release `v0.1.2` was published from `f649cf6c9e3239bf128fcc4292da90ee952eed05` by run `31562209421`. The release tag targets that exact commit and its four assets are uploaded: unsigned setup, `RELEASES`, full package, and build evidence. The setup asset is 149,266,432 bytes with SHA-256 `08727AEB22683688457BF99EF0B2212E7D684482BBCABCB7853A2C9EC8843F77`.
+
+The original release notes were corrected after verification found PowerShell interpolation control characters. The release body now records the exact target SHA, asset hash, `NotSigned` state, job-to-publication duration, line-count table, and local-only test boundary. The next workflow revision creates a private draft, fills its notes through the numeric release ID, publishes once, replaces the two timing placeholders from authoritative `publishedAt`, and fails unless the public read-back is complete and free of control characters or unresolved placeholders.
+
+GitHub Pages deployment run `31562252019` is green at `f649cf6c9e3239bf128fcc4292da90ee952eed05`; the public home and security article return HTTP 200. The repository inventory has one primary checkout, local `main`, remote `main`, no additional branches, no stashes, and no linked worktrees. Published release tags are retained as immutable delivery history.

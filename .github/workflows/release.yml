@@ -2,6 +2,8 @@ name: Build and publish Windows release
 
 on:
   push:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -12,7 +14,6 @@ jobs:
     runs-on: windows-2025
     timeout-minutes: 45
     env:
-      GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN }}
       CSC_IDENTITY_AUTO_DISCOVERY: "false"
       WIN_CSC_LINK: ""
       WIN_CSC_KEY_PASSWORD: ""
@@ -87,22 +88,35 @@ jobs:
 
       - name: Publish one immutable release for this run
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
-          $completed = [DateTimeOffset]::UtcNow
-          $started = [DateTimeOffset]::Parse('${{ steps.timing.outputs.started }}')
-          $duration = $completed - $started
+          $run = gh run view '${{ github.run_id }}' --repo '${{ github.repository }}' --json jobs | ConvertFrom-Json
+          $firstJob = $run.jobs | Sort-Object startedAt | Select-Object -First 1
+          if (-not $firstJob.startedAt) { throw 'The first job start timestamp is unavailable.' }
+          $started = [DateTimeOffset]::Parse($firstJob.startedAt)
           $tag = "v0.1.${{ github.run_number }}"
           $lineCount = Get-Content -Raw "$env:RUNNER_TEMP/line-count.md"
-          $notes = @"
-          # Material Encryption $tag
+          $notesPath = Join-Path $env:RUNNER_TEMP 'release-notes.md'
+          $assets = @(Get-ChildItem -LiteralPath '${{ steps.evidence.outputs.stage }}' -File | ForEach-Object FullName)
+          if ($assets.Count -lt 4) { throw 'Release staging is incomplete.' }
+          Set-Content -LiteralPath $notesPath -Value 'Draft release preparation.' -Encoding utf8
+          gh release create $tag @assets --target "${{ github.sha }}" --title "Material Encryption $tag" --notes-file $notesPath --draft
+          if ($LASTEXITCODE -ne 0) { throw 'Release creation failed.' }
+          $drafts = gh api 'repos/${{ github.repository }}/releases?per_page=100' | ConvertFrom-Json
+          $draft = @($drafts | Where-Object { $_.tag_name -eq $tag -and $_.draft })
+          if ($draft.Count -ne 1) { throw 'The newly created draft release could not be identified uniquely.' }
+          $releaseId = $draft[0].id
+          $template = @'
+          # Material Encryption __TAG__
 
-          Windows-only unsigned Squirrel.Windows release built from `${{ github.sha }}`.
+          Windows-only unsigned Squirrel.Windows release built from __SHA__.
 
           ## Installer
 
-          - `${{ steps.evidence.outputs.setup }}`
-          - SHA-256: `${{ steps.evidence.outputs.sha256 }}`
-          - Signature: `NotSigned`
+          - __SETUP__
+          - SHA-256: __HASH__
+          - Signature: NotSigned
 
           > This installer is unsigned and may trigger an unknown-publisher or SmartScreen warning.
 
@@ -112,23 +126,45 @@ jobs:
 
           ## Workflow timing
 
-          - Workflow started: `$($started.ToUniversalTime().ToString('o'))`
-          - Workflow completed: `$($completed.ToUniversalTime().ToString('o'))`
-          - Workflow duration: `$($duration.ToString('hh\:mm\:ss'))`
+          - Workflow started: __STARTED__
+          - Workflow completed: __COMPLETED__
+          - Workflow duration: __DURATION__
 
           ## Line count
 
-          Reproduce with `npm run count:lines`.
+          Reproduce with npm run count:lines.
 
-          $lineCount
+          __LINE_COUNT__
 
           ## Dim sum code name
 
           No code name was assigned because this release workflow does not copy or fetch catalog assets during publishing.
-          "@
-          $notesPath = Join-Path $env:RUNNER_TEMP 'release-notes.md'
+          '@
+          $notes = $template.Replace('__TAG__', $tag).
+            Replace('__SHA__', '${{ github.sha }}').
+            Replace('__SETUP__', '${{ steps.evidence.outputs.setup }}').
+            Replace('__HASH__', '${{ steps.evidence.outputs.sha256 }}').
+            Replace('__STARTED__', $started.ToUniversalTime().ToString('o')).
+            Replace('__COMPLETED__', 'pending publication').
+            Replace('__DURATION__', 'pending publication').
+            Replace('__LINE_COUNT__', $lineCount.Trim())
           Set-Content -LiteralPath $notesPath -Value $notes -Encoding utf8
-          gh release create $tag "${{ steps.evidence.outputs.stage }}/*" --target "${{ github.sha }}" --title "Material Encryption $tag" --notes-file $notesPath --latest
+          gh api -X PATCH "repos/${{ github.repository }}/releases/$releaseId" -F "body=@$notesPath" | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw 'Draft release note finalization failed.' }
+          gh api -X PATCH "repos/${{ github.repository }}/releases/$releaseId" -F draft=false -f make_latest=true | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw 'Release publication failed.' }
+          $published = gh release view $tag --json body,targetCommitish,isDraft,isPrerelease,publishedAt,assets | ConvertFrom-Json
+          $completed = [DateTimeOffset]::Parse($published.publishedAt)
+          $duration = $completed - $started
+          $notes = $notes.Replace('- Workflow completed: pending publication', '- Workflow completed: ' + $completed.ToUniversalTime().ToString('o'))
+          $notes = $notes.Replace('- Workflow duration: pending publication', '- Workflow duration: ' + $duration.ToString('hh\:mm\:ss'))
+          Set-Content -LiteralPath $notesPath -Value $notes -Encoding utf8
+          gh release edit $tag --notes-file $notesPath
+          if ($LASTEXITCODE -ne 0) { throw 'Published release timing finalization failed.' }
+          $published = gh release view $tag --json body,targetCommitish,isDraft,isPrerelease,publishedAt,assets | ConvertFrom-Json
+          if ($published.targetCommitish -ne '${{ github.sha }}' -or $published.isDraft -or $published.isPrerelease) { throw 'Published release metadata does not match the run.' }
+          if ($published.assets.Count -lt 4) { throw 'Published release assets are incomplete.' }
+          if ($published.body -match '[\x00-\x08\x0B\x0C\x0E-\x1F]' -or $published.body -match '__[A-Z_]+__' -or $published.body -match '\$\(') { throw 'Published release notes contain control characters or unresolved placeholders.' }
 
       - name: Collect safe build outputs
         if: ${{ always() }}
