@@ -29,6 +29,39 @@ test('renderer bridge exposes authoritative queue and exact PDF plan execution s
   assert.match(await fs.readFile(path.join(root, 'src/main/file-converter.cjs'), 'utf8'), /queueResume\(\).*return queue\.start\(\)/s, 'IPC resume must start work without awaiting the full drain');
 });
 
+test('converter, PDF, and Ollama surfaces keep authoritative action and accessibility contracts', async () => {
+  const design = await fs.readFile(path.join(root, 'design/VeraCrypt Material.dc.html'), 'utf8');
+  for (const marker of [
+    'converterPreflightReady',
+    's.conversionDestinationToken',
+    "value.ready === true",
+    "job.status === 'queued' && job.bundled === true",
+    'queueSignature: converterQueueSignature',
+    'conversionDisabledReason',
+    'pdfToolDisabledReason',
+    'pdfRunDisabledReason'
+  ]) assert.ok(design.includes(marker), `missing authoritative action marker: ${marker}`);
+  assert.doesNotMatch(design, /conversionDisabled:[^\n]*!s\.conversionOutput/, 'typed output text must not unlock conversion');
+  assert.match(design, /setConversionOutput:[^\n]*conversionDestinationToken: ''[^\n]*conversionPlan: null/, 'typing output text must clear destination authority and the retained plan');
+
+  for (const marker of [
+    'aria-label="{{ f.menuLabel }}"',
+    'aria-label="{{ model.menuLabel }}"',
+    'aria-label="{{ profile.menuLabel }}"',
+    'aria-label="{{ ot.menuLabel }}"'
+  ]) assert.ok(design.includes(marker), `missing named keyboard action button: ${marker}`);
+
+  assert.match(design, /activateTabFromKey\([\s\S]*ArrowRight:[ ]*1[\s\S]*ArrowLeft:[ ]*-1[\s\S]*event\.key === 'Home'[\s\S]*event\.key === 'End'/);
+  for (const panel of ['converter-category-panel', 'pdf-tool-tabpanel', 'ollama-panel-runtime', 'ollama-panel-catalog', 'ollama-panel-cart', 'ollama-panel-chat', 'ollama-panel-harnesses', 'ollama-panel-restore', 'ollama-model-category-panel']) {
+    assert.match(design, new RegExp(`id="${panel}"[^>]*role="tabpanel"`), `${panel} must be a stable labelled tab panel`);
+  }
+  assert.match(design, /role="progressbar"[^>]*aria-valuemin="0"[^>]*aria-valuemax="100"[^>]*aria-valuenow="\{\{ ollamaDownloadPercent \}\}"/);
+  assert.match(design, /id="ollama-download-status" role="status" aria-live="polite"/);
+  assert.match(design, /ollamaDownloadPercent: Math\.max\(0, Math\.min\(100,/);
+  assert.match(design, /@media\(max-width:600px\)[\s\S]*\.regex-editor-row\{grid-template-columns:minmax\(0,1fr\)!important/);
+  assert.ok((design.match(/class="regex-editor-row"/g) || []).length >= 4, 'new regex rows must opt into the shared narrow layout');
+});
+
 test('persisted queue schema fails closed before malformed jobs can reach preflight or resume', async () => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'material-encryption-invalid-queue-'));
   const statePath = path.join(directory, 'queue.json');
@@ -40,6 +73,24 @@ test('persisted queue schema fails closed before malformed jobs can reach prefli
   } finally {
     await fs.rm(directory, { recursive: true, force: true });
   }
+});
+
+test('persistent queue preflight refuses empty work and returns bundled capability proof per queued job', async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'material-encryption-preflight-proof-'));
+  const inputs = path.join(directory, 'inputs');
+  const outputs = path.join(directory, 'outputs');
+  await fs.mkdir(inputs); await fs.mkdir(outputs);
+  const input = path.join(inputs, 'record.json');
+  await fs.writeFile(input, '{"ready":true}');
+  try {
+    const queue = createPersistentConversionQueue({ statePath: path.join(directory, 'queue.json') });
+    await assert.rejects(queue.preflight(), (error) => error.code === 'QUEUE_EMPTY');
+    const [job] = await queue.enqueue({ paths: [input], destinationRoot: outputs, rule: { targetFormat: 'yaml', group: 'records' } });
+    const proof = await queue.preflight();
+    assert.equal(proof.ready, true);
+    assert.equal(proof.queued, 1);
+    assert.deepEqual(proof.jobs, [{ id: job.id, status: 'queued', targetFormat: 'yaml', adapter: 'local', bundled: true }]);
+  } finally { await fs.rm(directory, { recursive: true, force: true }); }
 });
 
 test('flat registry retains canonical categories, extension arrays, and missing dependency names', () => {

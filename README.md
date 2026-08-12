@@ -10,7 +10,7 @@ Material Encryption is a Material Design 3 Windows desktop interface for a separ
 > Material Encryption is independent from VeraCrypt. It never bundles VeraCrypt, never implements encryption, and never puts a volume password on a process command line. VeraCrypt must be installed separately.
 
 > [!NOTE]
-> The 14-destination application, expanded converter, and Ollama Studio described below are currently unreleased. The source test inventory contains 41 Node tests, but the final complete local suite, packaged runtime captures, installer, release, and hosted-site verification must be refreshed at the final candidate commit.
+> The 14-destination application, expanded converter, and Ollama Studio described below are currently unreleased. The source test inventory contains 42 Node tests, but the final complete local suite, packaged runtime captures, installer, release, and hosted-site verification must be refreshed at the final candidate commit.
 
 ## Install and build
 

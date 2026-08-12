@@ -2,11 +2,13 @@
 
 `build.bat` restores locked dependencies, regenerates the renderer, runs local checks, and builds the unpacked application. Silent modes are `/s`, `--silent`, and `SILENT=1`. `build-installer.bat` calls that route and creates unsigned Squirrel.Windows setup and update artifacts.
 
-The installer path must verify `Setup.exe`, `RELEASES`, the full package, unsigned status, intended source commit, and SHA-256. It never publishes, tags, pushes, or creates a release.
+The installer path resolves package version `0.1.9`, which is monotonic beyond the published `0.1.8` baseline. It verifies the exact `MaterialEncryption-Setup-0.1.9-x64.exe`, `RELEASES`, and `material-encryption-0.1.9-full.nupkg` names, requires the index to link that exact full package, checks unsigned status, and reports SHA-256. It never publishes, tags, pushes, or creates a release.
 
 The logo source produces a nine-size Windows ICO. Packaging keeps signer discovery disabled, applies only the reviewed icon resource through the deterministic local resource path, extracts the icon from the built executable, and proves the executable remains unsigned.
 
-Release automation builds and publishes on every push and manual dispatch. Tests and lint remain local and do not run in the workflow. This reduces publication latency but means automation can publish a commit whose local checks were skipped; release notes must name only the checks actually run and their real results.
+Release automation builds and publishes on every push and manual dispatch. The packaging-only `dist:unsigned` script prevents the workflow from inheriting local tests through an npm script. Tests and lint remain local and do not run in the workflow. This reduces publication latency but means automation can publish a commit whose local checks were skipped; release notes must name only the checks actually run and their real results.
+
+Each release tag uses `v0.1.9-build.<run number>`: the package version remains monotonic for Squirrel.Windows while the run suffix keeps every workflow release unique. Publication requires exactly five named assets: setup, `RELEASES`, the full package, `build-evidence.json`, and the selected decoded public-catalog dim-sum PNG. Both staging and the published release are compared against that exact set; a count-only match, a recursive first match, or an index pointing at another package fails publication.
 
 ## Current candidate status
 
@@ -18,7 +20,7 @@ The current source adds:
 - a persistent resumable conversion queue with bounded worker concurrency;
 - official Ollama model/tag catalog pagination and offline cache;
 - evidence-based PC-fit results, free batch downloads, chat, and reviewed harness launch/restore;
-- a total inventory of 41 Node tests.
+- a total inventory of 42 Node tests.
 
 These statements describe the source tree. They do not assert a final passing suite, current packaged capture matrix, current installer, new release, or current hosted-site deployment. The historical 24-state capture manifest lacks Ollama Studio and must be replaced or supplemented during the final release pass.
 

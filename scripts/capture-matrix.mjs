@@ -1,4 +1,4 @@
-import { copyFile, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 
@@ -16,6 +16,8 @@ if (baselineStates.length !== 24 || states.length !== expectedStateCount || new 
 await mkdir(path.dirname(outputDir), { recursive: true });
 const stagingDir = await mkdtemp(path.join(path.dirname(outputDir), '.capture-matrix-'));
 const records = [];
+let stagingPublished = false;
+const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 try {
 for (const state of states) {
   const output = path.join(stagingDir, `material-encryption-${state}.png`);
@@ -51,10 +53,33 @@ const manifest = {
   evidenceBoundary: 'Seeded visual fixtures exercise deterministic renderer states only and are not live file, model, download, chat, harness, restore, or Ollama-service proof. ollama-offline remains an actual packaged bridge/runtime observation.',
   states: records
 };
-await mkdir(outputDir, { recursive: true });
-for (const record of records) await copyFile(path.join(stagingDir, path.basename(record.output)), record.output);
-await writeFile(path.join(outputDir, 'capture-manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
+for (const record of records) {
+  const stagedPath = path.join(stagingDir, path.basename(record.output));
+  const bytes = await readFile(stagedPath);
+  if (bytes.length < 33 || !bytes.subarray(0, 8).equals(pngSignature) || bytes.readUInt32BE(8) !== 13 || bytes.subarray(12, 16).toString('ascii') !== 'IHDR') throw new Error(`${record.state} staged output does not have a valid PNG signature and IHDR.`);
+  const width = bytes.readUInt32BE(16); const height = bytes.readUInt32BE(20);
+  if (width !== record.width || height !== record.height) throw new Error(`${record.state} staged PNG header is ${width}x${height}, but the child reported ${record.width}x${record.height}.`);
+}
+await writeFile(path.join(stagingDir, 'capture-manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
+const expectedBasenames = [...states.map((state) => `material-encryption-${state}.png`), 'capture-manifest.json'].sort();
+const stagedBasenames = (await readdir(stagingDir)).sort();
+if (JSON.stringify(stagedBasenames) !== JSON.stringify(expectedBasenames)) throw new Error(`Staged capture set is not exact: ${JSON.stringify(stagedBasenames)}`);
+const backupDir = `${outputDir}.capture-backup-${process.pid}-${Date.now()}`;
+let priorOutputMoved = false;
+try {
+  try { await stat(outputDir); await rename(outputDir, backupDir); priorOutputMoved = true; }
+  catch (error) { if (error?.code !== 'ENOENT') throw error; }
+  await rename(stagingDir, outputDir);
+  stagingPublished = true;
+} catch (error) {
+  if (priorOutputMoved) {
+    try { await stat(outputDir); }
+    catch (missing) { if (missing?.code === 'ENOENT') await rename(backupDir, outputDir); else throw missing; }
+  }
+  throw error;
+}
+if (priorOutputMoved) await rm(backupDir, { recursive: true, force: true });
 console.log(`PASS: captured ${records.length} packaged runtime states (${manifest.seededVisualFixtureCount} seeded visual fixtures, ${manifest.packagedRuntimeUiCount} packaged UI interactions, ${manifest.actualBridgeRuntimeObservationCount} actual bridge/runtime observation) to ${outputDir}.`);
 } finally {
-  await rm(stagingDir, { recursive: true, force: true });
+  if (!stagingPublished) await rm(stagingDir, { recursive: true, force: true });
 }

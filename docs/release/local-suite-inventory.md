@@ -8,13 +8,14 @@ Every command below belongs in the final release-shutdown pass. The evidence col
 | Design compile and destinations | `npm run test:design` | JavaScript compile plus 14 hand-listed destinations, including Ollama Studio |
 | Renderer and process security | `npm run test:security` | CSP, isolation, local assets, and secret-safe invocation contract |
 | Workflow bootstrap inventory | `npm run test:workflow` | Release job and explicit dependency inventory |
-| Node unit suite | `npm test` | 41 declared tests across six files; final verdict pending integration run |
+| Package manifest | `npm run test:package` | Version newer than `0.1.8`, lockfile parity, unsigned Squirrel settings, and packaging-only workflow primitive |
+| Node unit suite | `npm test` | 42 declared tests across six files; final verdict pending integration run |
 | Complete source suite | `npm run test:all` | Runs brand, design, security, workflow, and Node test commands in sequence |
 | Line evidence | `npm run count:lines` | Committed counter only; publish only the table produced at the release commit |
 | Unpacked package | `npm run package` | Real packaged `resources/app.asar` from the candidate commit |
 | Executable identity | `pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/verify-packaged-icon.ps1 -Executable 'dist\win-unpacked\Material Encryption.exe'` | Extracted icon, executable hash, and unsigned state |
 | Runtime smoke and capture | `npm run capture:matrix -- --port=<isolated-port>` | Must be refreshed to cover all 14 destinations, including Ollama Studio, plus required semantic states |
-| Installer | `build-installer.bat /s` | Squirrel.Windows setup, `RELEASES`, full package, source commit, hash, and unsigned state |
+| Installer | `build-installer.bat /s` | Exact versioned Squirrel.Windows setup and full-package names, `RELEASES` linkage, source commit, hash, and unsigned state |
 
 ## Node test breakdown
 
@@ -25,8 +26,8 @@ Every command below belongs in the final release-shutdown pass. The evidence col
 | `tests/file-converter.test.mjs` | 10 | Detection, adapters, byte bounds, destinations, capabilities, and partial batches |
 | `tests/converter-bridge-contract.test.mjs` | 5 | Preload/main queue and PDF seams, stored-state validation, registry categories, and plan bounds |
 | `tests/pdf-tools.test.mjs` | 10 | Bundled/offline registry, all PDF operations, reopened validation, atomic writes, persistent queue, and folder rules |
-| `tests/ollama-manager.test.mjs` | 10 | Loopback API, streams, cart, catalog pagination/cache, PC fit, harness rollback/restore, and bounded history metadata |
-| **Total** | **41** | Source inventory only until `npm test` completes at the final commit |
+| `tests/ollama-manager.test.mjs` | 11 | Loopback API, streams, cancellation, cart, catalog pagination/cache, PC fit, harness rollback/restore, and bounded history metadata |
+| **Total** | **42** | Source inventory only until `npm test` completes at the final commit |
 
 ## Runtime evidence requirements
 

@@ -2,15 +2,17 @@
 
 const fs = require('node:fs/promises');
 const path = require('node:path');
-const { app, BrowserWindow, dialog, ipcMain, nativeImage, shell } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, nativeImage, protocol, shell } = require('electron');
 const vc = require('./veracrypt.cjs');
 const locks = require('./credential-store.cjs');
 const converter = require('./file-converter.cjs');
 const ollama = require('./ollama-manager.cjs');
+const logos = require('./logo-service.cjs');
 
 let mainWindow;
 let converterService;
 let ollamaService;
+let logoService;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -105,9 +107,18 @@ function register(channel, callback) {
 }
 
 app.whenReady().then(() => {
-  createWindow();
   converterService = converter.createConverterService({ dialog, nativeImage, ownerWindow: () => mainWindow, queueStatePath: path.join(app.getPath('userData'), 'conversion-queue.v1.json') });
   ollamaService = ollama.createOllamaManager({ dataRoot: path.join(app.getPath('userData'), 'ollama') });
+  logoService = logos.createLogoService({ dialog, ownerWindow: () => mainWindow, dataRoot: path.join(app.getPath('userData'), 'custom-logo') });
+  protocol.handle('material-logo', async (request) => {
+    try {
+      const url = new URL(request.url);
+      if (url.hostname !== 'asset' || url.pathname !== '/png' || [...url.searchParams.keys()].some((key) => !['id', 'size'].includes(key))) throw new Error('Unsupported logo request.');
+      const bytes = await logoService.asset(url.searchParams.get('id'), Number(url.searchParams.get('size')));
+      return new Response(bytes, { status: 200, headers: { 'Content-Type': 'image/png', 'Content-Length': String(bytes.length), 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });
+    } catch (_) { return new Response('', { status: 404, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } }); }
+  });
+  createWindow();
 
   register('vc:status', () => vc.getStatus());
   register('vc:mount', (value) => {
@@ -156,6 +167,17 @@ app.whenReady().then(() => {
     await fs.writeFile(result.filePath, content, 'utf8');
     return result.filePath;
   });
+
+  const logoRegister = (channel, callback) => ipcMain.handle(channel, async (event, payload) => {
+    try { assertTrustedSender(event); return { ok: true, value: await callback(payload || {}) }; }
+    catch (error) { const safe = logos.publicError(error); return { ok: false, error: safe.message, code: safe.code }; }
+  });
+  const logoPayload = (value, keys) => exactRecord(value, keys, 'Logo payload');
+  logoRegister('logo:select', (value) => { logoPayload(value, []); return logoService.select(); });
+  logoRegister('logo:state', (value) => { logoPayload(value, []); return logoService.state(); });
+  logoRegister('logo:preview', (value) => { const payload = logoPayload(value, ['token', 'options']); return logoService.preview({ token: payload.token == null ? null : boundedText(payload.token, 'Logo selection token', 64), options: logoPayload(payload.options || {}, ['fit', 'background', 'focalX', 'focalY', 'cropZoom']) }); });
+  logoRegister('logo:apply', (value) => { const payload = logoPayload(value, ['token', 'options']); return logoService.apply({ token: payload.token == null ? null : boundedText(payload.token, 'Logo selection token', 64), options: logoPayload(payload.options || {}, ['fit', 'background', 'focalX', 'focalY', 'cropZoom']) }); });
+  logoRegister('logo:reset', (value) => { logoPayload(value, []); return logoService.reset(); });
 
   converterRegister('converter:select-input', (value) => {
     converterPayload(value, []);

@@ -356,7 +356,7 @@ async function snapshotConfigs(io, profile, root) {
     try { const bytes = await io.readFile(target); if (bytes.length > MiB) fail('CONFIG_TOO_LARGE', 'A harness configuration file is too large to snapshot.'); await io.writeFile(`${backup}.tmp`, bytes, { flag: 'wx' }); await io.rename(`${backup}.tmp`, backup); existed = true; } catch (error) { if (error.code && error.code !== 'ENOENT') throw error; }
     files.push({ target, backup, existed });
   }
-  await writeJsonAtomic(io, path.join(folder, 'manifest.json'), { version: 1, profileId: profile.id, files });
+  await writeJsonAtomic(io, path.join(folder, 'manifest.json'), { version: 1, profileId: profile.id, profileName: profile.label, createdAt: new Date().toISOString(), files });
   return { snapshotId: id, folder, files };
 }
 
@@ -368,6 +368,28 @@ async function restoreSnapshot(io, snapshotsRoot, snapshotId) {
     else { try { await io.unlink(entry.target); } catch (error) { if (error.code !== 'ENOENT') throw error; } }
   }
   return { restored: true, snapshotId };
+}
+
+async function listSnapshots(io, snapshotsRoot) {
+  let entries;
+  try { entries = await io.readdir(snapshotsRoot, { withFileTypes: true }); } catch (error) { if (error.code === 'ENOENT') return []; throw error; }
+  const snapshots = [];
+  for (const entry of entries.slice(0, 10000)) {
+    if (!entry.isDirectory() || !/^[0-9a-f-]{36}$/i.test(entry.name)) continue;
+    const manifest = await readJsonFile(io, path.join(snapshotsRoot, entry.name, 'manifest.json'));
+    if (!manifest || typeof manifest.profileId !== 'string' || !Array.isArray(manifest.files)) continue;
+    snapshots.push({
+      id: entry.name,
+      snapshotId: entry.name,
+      profileId: manifest.profileId.slice(0, 64),
+      profileName: typeof manifest.profileName === 'string' ? manifest.profileName.slice(0, 128) : manifest.profileId.slice(0, 64),
+      createdAt: typeof manifest.createdAt === 'string' ? manifest.createdAt.slice(0, 64) : null,
+      status: 'ready',
+      restorable: true,
+      changes: manifest.files.map((item) => path.basename(typeof item?.target === 'string' ? item.target : '')).filter(Boolean).slice(0, 128)
+    });
+  }
+  return snapshots.sort((a, b) => String(b.createdAt || b.id).localeCompare(String(a.createdAt || a.id)));
 }
 
 function launchProcess(spawn, executable, args) {
@@ -416,7 +438,8 @@ function createOllamaManager(options = {}) {
     const found = [];
     for (const profile of defaults) {
       const executable = await (async () => { for (const candidate of profile.candidates) if (await pathExists(io, candidate)) return path.resolve(candidate); return null; })();
-      found.push({ ...profile, name: profile.label, description: 'Built-in reviewed local Ollama runtime profile.', executable, installed: Boolean(executable), ready: Boolean(executable), available: Boolean(executable), code: executable ? 'READY' : 'RUNTIME_NOT_INSTALLED', reason: executable ? null : 'Ollama was not found in an allowlisted installation location.', recovery: executable ? null : 'Install Ollama using the bundled in-app setup guidance.' });
+      const requiresValues = profile.placeholders.length > 0;
+      found.push({ ...profile, name: profile.label, description: 'Built-in reviewed local Ollama runtime profile.', executable, installed: Boolean(executable), ready: Boolean(executable) && !requiresValues, available: Boolean(executable) && !requiresValues, code: !executable ? 'RUNTIME_NOT_INSTALLED' : (requiresValues ? 'PROFILE_VALUES_REQUIRED' : 'READY'), reason: !executable ? 'Ollama was not found in an allowlisted installation location.' : (requiresValues ? `Choose the required ${profile.placeholders.join(', ')} value before launch.` : null), recovery: !executable ? 'Install Ollama using the bundled in-app setup guidance.' : (requiresValues ? 'Choose an installed model in the reviewed harness launch form.' : null), requiredValues: [...profile.placeholders] });
     }
     const allowed = defaults.flatMap((item) => item.candidates);
     const configRoots = [path.join(options.environment?.LOCALAPPDATA || process.env.LOCALAPPDATA || '', 'Ollama')].filter((item) => path.isAbsolute(item));
@@ -429,8 +452,9 @@ function createOllamaManager(options = {}) {
   const profilePreflight = async (profileId, values = {}, userProfiles = []) => {
     const profiles = await discoveredProfiles(userProfiles); const profile = profiles.find((item) => item.id === profileId);
     if (!profile) fail('PROFILE_NOT_FOUND', 'The harness profile is not available.');
-    const args = profile.executable ? renderArgs(profile, values) : [];
-    return { profileId, ready: profile.installed, executable: profile.executable, args, code: profile.installed ? 'READY' : 'RUNTIME_NOT_INSTALLED', recovery: profile.recovery };
+    const missingValues = profile.placeholders.filter((key) => typeof values?.[key] !== 'string' || !values[key].trim());
+    const args = profile.executable && !missingValues.length ? renderArgs(profile, values) : [];
+    return { profileId, ready: profile.installed && !missingValues.length, executable: profile.executable, args, missingValues, code: !profile.installed ? 'RUNTIME_NOT_INSTALLED' : (missingValues.length ? 'PROFILE_VALUES_REQUIRED' : 'READY'), recovery: !profile.installed ? profile.recovery : (missingValues.length ? `Choose the required ${missingValues.join(', ')} value before launch.` : null) };
   };
 
   return Object.freeze({
@@ -441,31 +465,34 @@ function createOllamaManager(options = {}) {
     list: async () => { const value = await request('/api/tags'); if (!Array.isArray(value.models)) fail('MALFORMED_RESPONSE', 'Ollama returned an invalid model inventory.'); return value.models.slice(0, 10000).filter(isRecord).map((model) => ({ name: modelName(model.name || model.model), size: Number.isSafeInteger(model.size) && model.size >= 0 ? model.size : null, digest: typeof model.digest === 'string' ? model.digest.slice(0, 256) : null, modifiedAt: typeof model.modified_at === 'string' ? model.modified_at.slice(0, 128) : null, details: isRecord(model.details) ? safeModelDetails({ details: model.details }, model) : null })); },
     show: async (name) => { const normalized = modelName(name); const inventory = (await request('/api/tags')).models?.find((item) => item.name === normalized || item.model === normalized); return safeModelDetails(await request('/api/show', { method: 'POST', body: { model: normalized } }), inventory); },
     pull,
-    cancel: (operationIdOrKind) => { const key = boundedText(operationIdOrKind, 'Operation id or kind', 64); const entry = active.get(key) ? [key, active.get(key)] : [...active.entries()].find(([, operation]) => operation.kind === key); if (!entry) return { cancelled: false, code: 'OPERATION_NOT_ACTIVE' }; entry[1].controller.abort(); return { cancelled: true, operationId: entry[0], code: 'CANCEL_REQUESTED' }; },
+    cancel: (operationIdOrKind) => { const key = boundedText(operationIdOrKind, 'Operation id or kind', 64); const entries = active.has(key) ? [[key, active.get(key)]] : [...active.entries()].filter(([, operation]) => operation.kind === key); if (!entries.length) return { cancelled: false, code: 'OPERATION_NOT_ACTIVE' }; for (const [, operation] of entries) operation.controller.abort(); return { cancelled: true, operationId: entries[0][0], operationIds: entries.map(([operationId]) => operationId), code: 'CANCEL_REQUESTED' }; },
     delete: async (name, confirmed) => { if (confirmed !== true) fail('CONFIRMATION_REQUIRED', 'Deleting a model requires explicit confirmation.'); const normalized = modelName(name); await request('/api/delete', { method: 'DELETE', body: { model: normalized } }); return { deleted: true, model: normalized }; },
     pullBatch: async (items, { concurrency = 2, onProgress } = {}) => {
       if (!Array.isArray(items) || !items.length || items.length > 128) fail('INVALID_BATCH', 'The model cart is invalid.'); boundedInteger(concurrency, 'Pull concurrency', 1, 3);
       const models = items.map((item) => { exactRecord(item, ['name', 'sizeBytes'], 'Cart item'); return { name: modelName(item.name), sizeBytes: item.sizeBytes == null ? null : boundedInteger(item.sizeBytes, 'Model size', 0, Number.MAX_SAFE_INTEGER) }; });
-      const hardware = await collectHardware(options.hardware || {}); const knownDownload = models.reduce((sum, item) => sum + (item.sizeBytes == null ? 0 : Math.ceil(item.sizeBytes * 1.15 + 512 * MiB)), 0);
-      if (models.every((item) => item.sizeBytes != null) && hardware.freeDiskBytes != null && hardware.freeDiskBytes < knownDownload) return { code: 'INSUFFICIENT_DISK', requiredDiskBytes: knownDownload, freeDiskBytes: hardware.freeDiskBytes, outcomes: models.map((item) => ({ model: item.name, status: 'skipped', code: 'INSUFFICIENT_DISK' })) };
+      const unknownSize = models.filter((item) => item.sizeBytes == null);
+      if (unknownSize.length) return { code: 'MODEL_SIZE_UNKNOWN', requiredDiskBytes: null, freeDiskBytes: null, outcomes: models.map((item) => ({ model: item.name, status: 'skipped', code: item.sizeBytes == null ? 'MODEL_SIZE_UNKNOWN' : 'BATCH_PREFLIGHT_BLOCKED' })) };
+      const hardware = await collectHardware(options.hardware || {}); const knownDownload = models.reduce((sum, item) => sum + Math.ceil(item.sizeBytes * 1.15 + 512 * MiB), 0);
+      if (hardware.freeDiskBytes == null) return { code: 'DISK_PREFLIGHT_UNAVAILABLE', requiredDiskBytes: knownDownload, freeDiskBytes: null, outcomes: models.map((item) => ({ model: item.name, status: 'skipped', code: 'DISK_PREFLIGHT_UNAVAILABLE' })) };
+      if (hardware.freeDiskBytes < knownDownload) return { code: 'INSUFFICIENT_DISK', requiredDiskBytes: knownDownload, freeDiskBytes: hardware.freeDiskBytes, outcomes: models.map((item) => ({ model: item.name, status: 'skipped', code: 'INSUFFICIENT_DISK' })) };
       const outcomes = new Array(models.length); let cursor = 0;
       await Promise.all(Array.from({ length: Math.min(concurrency, models.length) }, async () => { while (cursor < models.length) { const index = cursor++; const item = models[index]; const operation = pull(item.name, (progress) => onProgress?.({ model: item.name, ...progress })); try { await operation.promise; outcomes[index] = { model: item.name, status: 'pulled', code: 'PULLED' }; } catch (error) { outcomes[index] = { model: item.name, status: error?.name === 'AbortError' ? 'cancelled' : 'failed', ...publicError(error) }; } } }));
-      return { code: outcomes.every((item) => item.status === 'pulled') ? 'COMPLETE' : 'PARTIAL', requiredDiskBytes: models.every((item) => item.sizeBytes != null) ? knownDownload : null, freeDiskBytes: hardware.freeDiskBytes, outcomes };
+      return { code: outcomes.every((item) => item.status === 'pulled') ? 'COMPLETE' : 'PARTIAL', requiredDiskBytes: knownDownload, freeDiskBytes: hardware.freeDiskBytes, outcomes };
     },
-    chat: ({ model, system = '', messages, options: chatOptions = {} }, onChunk) => begin('chat', async (signal) => { let text = ''; await request('/api/chat', { method: 'POST', body: { model: modelName(model), messages: validateMessages(messages, system), options: validateChatOptions(chatOptions), stream: true }, signal, timeoutMs: 30 * 60 * 1000, stream: true, onEvent: (event) => { const chunk = typeof event.message?.content === 'string' ? event.message.content : ''; if (text.length + chunk.length > MiB) fail('RESPONSE_TOO_LARGE', 'The chat response exceeded the allowed size.'); text += chunk; if (chunk) onChunk?.({ content: chunk, done: event.done === true }); } }); return { content: text }; }),
+    chat: ({ model, system = '', messages, options: chatOptions = {} }) => begin('chat', async (signal) => { const value = await request('/api/chat', { method: 'POST', body: { model: modelName(model), messages: validateMessages(messages, system), options: validateChatOptions(chatOptions), stream: false }, signal, timeoutMs: 30 * 60 * 1000 }); const content = value?.message?.content; if (typeof content !== 'string' || content.length > MiB) fail('MALFORMED_RESPONSE', 'Ollama returned an invalid chat response.'); return { content, delivery: 'complete', progress: 'indeterminate-bounded' }; }),
     catalog: (catalogOptions = {}) => fetchOfficialCatalog({ fetcher, io, cachePath, ...catalogOptions }),
     catalogStore: async (catalogOptions = {}) => {
       const [catalog, installed, hardware] = await Promise.all([fetchOfficialCatalog({ fetcher, io, cachePath, ...catalogOptions }), request('/api/tags').then((value) => Array.isArray(value.models) ? value.models : [], () => []), collectHardware(options.hardware || {})]);
       const installedNames = new Set(installed.map((item) => item.name || item.model).filter((item) => typeof item === 'string'));
-      const models = catalog.models.map((entry) => ({ ...entry, variants: entry.tags.map((tag) => { const full = `${entry.name}:${tag}`; const installedItem = installed.find((item) => (item.name || item.model) === full); const sizeBytes = Number.isSafeInteger(installedItem?.size) ? installedItem.size : null; const fit = evaluateModelFit({ sizeBytes }, hardware); return { tag, name: entry.name, model: entry.name, installed: installedNames.has(full), available: true, sizeBytes, fitVerdict: fit.verdict, fitEvidence: fit.evidence, fitCaveat: fit.reasons.join(' ') || 'Conservative hardware thresholds were satisfied.' }; }) }));
+      const models = catalog.models.map((entry) => ({ ...entry, variants: entry.tags.map((tag) => { const full = `${entry.name}:${tag}`; const installedItem = installed.find((item) => (item.name || item.model) === full); const installedHere = installedNames.has(full); const sizeBytes = Number.isSafeInteger(installedItem?.size) ? installedItem.size : null; const downloadable = installedHere || sizeBytes != null; const fit = evaluateModelFit({ sizeBytes }, hardware); return { tag, name: entry.name, model: entry.name, installed: installedHere, available: downloadable, downloadable, unavailableReason: downloadable ? null : 'Published model bytes are unknown, so storage preflight cannot authorize this download.', sizeBytes, fitVerdict: fit.verdict, fitEvidence: fit.evidence, fitCaveat: fit.reasons.join(' ') || 'Conservative hardware thresholds were satisfied.' }; }) }));
       return { ...catalog, refreshedAt: new Date(catalog.fetchedAt).toISOString(), models };
     },
     hardware: () => collectHardware(options.hardware || {}),
     evaluateFit: (model, hardware) => evaluateModelFit(model, hardware),
-    profiles: (userProfiles = []) => discoveredProfiles(userProfiles),
+    profiles: async (userProfiles = []) => ({ profiles: await discoveredProfiles(userProfiles), snapshots: await listSnapshots(io, snapshotsRoot) }),
     profilePreflight,
     profilePreview: async (profileId, values = {}, userProfiles = []) => { const result = await profilePreflight(profileId, values, userProfiles); return { ...result, shell: false, windowsHide: true, configFiles: [] }; },
-    profileLaunch: async (profileId, values = {}, userProfiles = []) => { const profiles = await discoveredProfiles(userProfiles); const profile = profiles.find((item) => item.id === profileId); if (!profile || !profile.installed) fail('PROFILE_NOT_READY', 'The harness profile is not ready.', profile?.recovery || 'Use the in-app runtime discovery action.'); const args = renderArgs(profile, values); const snapshot = await snapshotConfigs(io, profile, snapshotsRoot); try { for (const mutation of profile.configMutations) { await writeJsonAtomic(io, path.resolve(mutation.path), mutation.content); } const launched = await launchProcess(spawn, profile.executable, args); return { launched: true, profileId, snapshotId: snapshot.snapshotId, snapshot: { id: snapshot.snapshotId, snapshotId: snapshot.snapshotId, profileName: profile.label, status: 'ready', restorable: true, changes: profile.configMutations.map((item) => path.basename(item.path)) }, pid: launched.pid }; } catch (error) { await restoreSnapshot(io, snapshotsRoot, snapshot.snapshotId); throw error; } },
+    profileLaunch: async (profileId, values = {}, userProfiles = []) => { const profiles = await discoveredProfiles(userProfiles); const profile = profiles.find((item) => item.id === profileId); if (!profile || !profile.installed) fail('PROFILE_NOT_READY', 'The harness profile is not ready.', profile?.recovery || 'Use the in-app runtime discovery action.'); const preflight = await profilePreflight(profileId, values, userProfiles); if (!preflight.ready) fail('PROFILE_VALUES_REQUIRED', 'The harness profile requires reviewed values before launch.', preflight.recovery); const args = preflight.args; const snapshot = await snapshotConfigs(io, profile, snapshotsRoot); try { for (const mutation of profile.configMutations) { await writeJsonAtomic(io, path.resolve(mutation.path), mutation.content); } const launched = await launchProcess(spawn, profile.executable, args); return { launched: true, profileId, snapshotId: snapshot.snapshotId, snapshot: { id: snapshot.snapshotId, snapshotId: snapshot.snapshotId, profileName: profile.label, status: 'ready', restorable: true, changes: profile.configMutations.map((item) => path.basename(item.path)) }, pid: launched.pid }; } catch (error) { await restoreSnapshot(io, snapshotsRoot, snapshot.snapshotId); throw error; } },
     profileRestore: (snapshotId) => restoreSnapshot(io, snapshotsRoot, snapshotId),
     historyList: async () => { const cache = await readJsonFile(io, historyPath); return Array.isArray(cache?.records) ? cache.records : []; },
     historyUpsert: async (value) => { exactRecord(value, ['id', 'title', 'model', 'messageCount', 'createdAt', 'updatedAt'], 'Chat history metadata'); const existing = await readJsonFile(io, historyPath); const records = Array.isArray(existing?.records) ? existing.records : []; const record = { id: boundedText(value.id, 'History id', 64), title: boundedText(value.title, 'History title', 256), model: modelName(value.model), messageCount: boundedInteger(value.messageCount, 'Message count', 0, 1000000), createdAt: boundedText(value.createdAt, 'Created time', 64), updatedAt: boundedText(value.updatedAt, 'Updated time', 64) }; const next = records.filter((item) => item.id !== record.id); next.push(record); await writeJsonAtomic(io, historyPath, { version: 1, records: next.slice(-10000) }); return record; },

@@ -54,28 +54,36 @@ test('redirects and malformed or incomplete pull streams fail closed', async () 
   await assert.rejects(incompleteManager.pull('gemma3:4b').promise, (error) => error.code === 'INCOMPLETE_STREAM');
 });
 
-test('pull and chat stream progress across fragmented UTF-8 and support cancellation', async () => {
-  let pending;
+test('pull progress streams across fragmented UTF-8 and chat uses a bounded complete response', async () => {
   const manager = createOllamaManager({ fetcher: async (url, init) => {
     if (url.endsWith('/api/pull')) return ndjson([{ status: '下載中', completed: 1, total: 2 }, { status: 'success', completed: 2, total: 2, done: true }], { chunks: [[0, 2], [2, 11], [11, 999]] });
-    if (url.endsWith('/api/chat')) {
-      pending = init.signal;
-      return { ok: true, status: 200, headers: new Headers(), body: Readable.from((async function* () { yield Buffer.from('{"message":{"content":"hello"},"done":false}\n'); await new Promise((resolve) => init.signal.addEventListener('abort', resolve, { once: true })); })()) };
-    }
+    if (url.endsWith('/api/chat')) return response({ message: { content: 'hello' }, done: true });
     throw new Error('unexpected');
   }});
   const progress = [];
   const pull = manager.pull('gemma3:4b', (event) => progress.push(event));
   await pull.promise;
   assert.equal(progress.at(-1).done, true);
-  const chunks = [];
-  const chat = manager.chat({ model: 'gemma3:4b', system: 'Be concise.', messages: [{ role: 'user', content: 'Hi' }], options: { temperature: 0.2, num_ctx: 4096 } }, (event) => chunks.push(event));
+  const chat = manager.chat({ model: 'gemma3:4b', system: 'Be concise.', messages: [{ role: 'user', content: 'Hi' }], options: { temperature: 0.2, num_ctx: 4096 } });
+  assert.deepEqual(await chat.promise, { content: 'hello', delivery: 'complete', progress: 'indeterminate-bounded' });
+});
+
+test('chat cancellation accepts an operation identifier or the active operation kind', async () => {
+  const signals = [];
+  const manager = createOllamaManager({ fetcher: async (_url, init) => {
+    signals.push(init.signal);
+    return { ok: true, status: 200, headers: new Headers(), body: Readable.from((async function* () { await new Promise((resolve) => init.signal.addEventListener('abort', resolve, { once: true })); })()) };
+  }});
+  const byId = manager.chat({ model: 'gemma3:4b', messages: [{ role: 'user', content: 'Hi' }] });
   await new Promise((resolve) => setImmediate(resolve));
-  assert.equal(manager.cancel(chat.operationId).code, 'CANCEL_REQUESTED');
-  await assert.rejects(chat.promise, (error) => error.name === 'AbortError');
-  assert.equal(pending.aborted, true);
-  assert.equal(chunks[0].content, 'hello');
-  assert.equal(manager.cancel(chat.operationId).code, 'OPERATION_NOT_ACTIVE');
+  assert.equal(manager.cancel(byId.operationId).code, 'CANCEL_REQUESTED');
+  await assert.rejects(byId.promise, (error) => error.name === 'AbortError');
+  assert.equal(signals[0].aborted, true);
+  const byKind = manager.chat({ model: 'gemma3:4b', messages: [{ role: 'user', content: 'Again' }] });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(manager.cancel('chat').code, 'CANCEL_REQUESTED');
+  await assert.rejects(byKind.promise, (error) => error.name === 'AbortError');
+  assert.equal(signals[1].aborted, true);
 });
 
 test('bounded cart pulls preserve per-model partial outcomes and disk preflight', async () => {
@@ -95,6 +103,12 @@ test('bounded cart pulls preserve per-model partial outcomes and disk preflight'
   const result = await lowDisk.pullBatch([{ name: 'large:latest', sizeBytes: 4 * GiB }]);
   assert.equal(result.code, 'INSUFFICIENT_DISK');
   assert.equal(result.outcomes[0].status, 'skipped');
+
+  const unknownSize = createOllamaManager({ fetcher: async () => assert.fail('unknown size must block network'), hardware: { platform: 'linux', totalmem: () => 16 * GiB, freemem: () => 12 * GiB, statfs: async () => ({ bavail: 100 * GiB, bsize: 1 }) } });
+  assert.equal((await unknownSize.pullBatch([{ name: 'unknown:latest', sizeBytes: null }])).code, 'MODEL_SIZE_UNKNOWN');
+
+  const unknownDisk = createOllamaManager({ fetcher: async () => assert.fail('missing disk evidence must block network'), hardware: { platform: 'linux', totalmem: () => 16 * GiB, freemem: () => 12 * GiB, statfs: async () => { throw new Error('unavailable'); } } });
+  assert.equal((await unknownDisk.pullBatch([{ name: 'known:latest', sizeBytes: GiB }])).code, 'DISK_PREFLIGHT_UNAVAILABLE');
 });
 
 test('official catalog follows bounded same-origin pagination and preserves every tag', async () => {
@@ -126,6 +140,27 @@ test('official catalog refuses unsafe pagination and serves stale validated cach
   } finally { await fs.rm(root, { recursive: true, force: true }); }
 });
 
+test('catalog store maps installed variants and blocks unknown-size uninstalled variants', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'ollama-store-test-'));
+  const cachePath = path.join(root, 'catalog-cache.v1.json');
+  await fs.writeFile(cachePath, JSON.stringify({ version: 1, fetchedAt: Date.now(), revision: 'catalog-revision', etag: null, source: 'network', stale: false, models: [{ name: 'gemma3', tags: ['4b', '12b'] }] }));
+  const manager = createOllamaManager({ dataRoot: root, fetcher: async (url) => {
+    if (url.endsWith('/api/tags')) return response({ models: [{ name: 'gemma3:4b', size: 3 * GiB }] });
+    throw new Error('offline registry');
+  }, hardware: { platform: 'linux', totalmem: () => 16 * GiB, freemem: () => 12 * GiB, statfs: async () => ({ bavail: 100 * GiB, bsize: 1 }) } });
+  try {
+    const store = await manager.catalogStore();
+    const [installed, unknown] = store.models[0].variants;
+    assert.equal(installed.installed, true);
+    assert.equal(installed.available, true);
+    assert.equal(installed.sizeBytes, 3 * GiB);
+    assert.equal(unknown.installed, false);
+    assert.equal(unknown.available, false);
+    assert.equal(unknown.downloadable, false);
+    assert.match(unknown.unavailableReason, /storage preflight cannot authorize/i);
+  } finally { await fs.rm(root, { recursive: true, force: true }); }
+});
+
 test('fit evaluator uses conservative RAM, VRAM, disk, and unknown verdicts', () => {
   const well = evaluateModelFit({ sizeBytes: 2 * GiB, contextLength: 4096 }, { totalRamBytes: 32 * GiB, availableRamBytes: 24 * GiB, freeDiskBytes: 100 * GiB, gpus: [{ vramBytes: 8 * GiB }] });
   assert.equal(well.verdict, 'Runs well');
@@ -153,6 +188,12 @@ test('guided runtime discovery, preview, launch rollback, restore, and no paymen
     assert.equal(discovery.runtimes[0].installed, true);
     assert.equal(manager.guidance().install.automaticInstallerAvailable, false);
     assert.doesNotMatch(JSON.stringify(manager.guidance()), /pay|purchase|subscription|trial/i);
+    const inventory = await manager.profiles();
+    const smokeProfile = inventory.profiles.find((profile) => profile.id === 'ollama-model-smoke');
+    assert.equal(smokeProfile.ready, false);
+    assert.deepEqual(smokeProfile.requiredValues, ['model']);
+    assert.equal((await manager.profilePreflight('ollama-model-smoke')).code, 'PROFILE_VALUES_REQUIRED');
+    await assert.rejects(manager.profileLaunch('ollama-model-smoke'), (error) => error.code === 'PROFILE_VALUES_REQUIRED');
     const preview = await manager.profilePreview('ollama-model-smoke', { model: 'gemma3:4b' });
     assert.equal(preview.shell, false); assert.equal(preview.windowsHide, true); assert.deepEqual(preview.args, ['run', 'gemma3:4b', 'Reply with OK.']);
     await assert.rejects(manager.profileLaunch('ollama-model-smoke', { model: 'gemma3:4b' }), /launch failed/);
@@ -161,6 +202,26 @@ test('guided runtime discovery, preview, launch rollback, restore, and no paymen
     await assert.rejects(manager.profileLaunch('reviewed-profile', {}, [custom]), /launch failed/);
     assert.equal(await fs.readFile(configPath, 'utf8'), 'original bytes');
     await assert.rejects(manager.profileLaunch('bad-path', {}, [{ ...custom, id: 'bad-path', configMutations: [{ path: path.join(root, 'outside.json'), content: {} }] }]), (error) => error.code === 'PROFILE_CONFIG_REJECTED');
+  } finally { await fs.rm(root, { recursive: true, force: true }); }
+});
+
+test('successful harness snapshots are rediscovered after manager restart and remain restorable', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'ollama-snapshot-restart-test-'));
+  const environment = { LOCALAPPDATA: root, ProgramFiles: path.join(root, 'pf') };
+  const installedPath = path.join(root, 'Programs', 'Ollama', 'ollama.exe');
+  await fs.mkdir(path.dirname(installedPath), { recursive: true });
+  await fs.writeFile(installedPath, 'fixture');
+  const spawn = () => { const child = new EventEmitter(); child.pid = 456; return child; };
+  try {
+    const first = createOllamaManager({ dataRoot: path.join(root, 'data'), environment, spawn, fetcher: async () => response({ version: '1' }) });
+    const launched = await first.profileLaunch('ollama-serve');
+    assert.equal(launched.launched, true);
+    const restarted = createOllamaManager({ dataRoot: path.join(root, 'data'), environment, spawn, fetcher: async () => response({ version: '1' }) });
+    const inventory = await restarted.profiles();
+    assert.equal(inventory.snapshots.length, 1);
+    assert.equal(inventory.snapshots[0].snapshotId, launched.snapshotId);
+    assert.equal(inventory.snapshots[0].restorable, true);
+    assert.deepEqual(await restarted.profileRestore(launched.snapshotId), { restored: true, snapshotId: launched.snapshotId });
   } finally { await fs.rm(root, { recursive: true, force: true }); }
 });
 

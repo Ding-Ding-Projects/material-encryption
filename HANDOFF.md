@@ -16,7 +16,7 @@ The current unreleased tree expands the application to 14 destinations. It adds 
 
 ## Current local-check boundary
 
-The test source contains 41 Node tests:
+The test source contains 42 Node tests:
 
 | Test file | Tests |
 |---|---:|

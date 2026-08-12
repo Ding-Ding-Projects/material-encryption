@@ -908,7 +908,16 @@ function createPersistentConversionQueue({ statePath, io = fs, nativeImage = nul
   }
   async function preflight() {
     await ensureLoaded();
-    const queued = state.jobs.filter((job) => ['queued', 'failed'].includes(job.status));
+    const queued = state.jobs.filter((job) => job.status === 'queued');
+    if (!queued.length) fail('QUEUE_EMPTY', 'No queued conversion is ready for storage and capability preflight.');
+    const availableFormats = new Map(getFlatFormatRegistry().map((format) => [format.id, format]));
+    const jobs = queued.map((job) => {
+      const format = availableFormats.get(job.targetFormat);
+      if (!format || format.status !== 'available' || format.bundled !== true || !format.adapter) {
+        fail('ADAPTER_UNAVAILABLE', 'A queued conversion does not have an authoritative bundled adapter capability.');
+      }
+      return { id: job.id, status: job.status, targetFormat: job.targetFormat, adapter: format.adapter, bundled: true };
+    });
     const byRoot = new Map();
     for (const job of queued) byRoot.set(job.destinationRoot, (byRoot.get(job.destinationRoot) || 0) + Math.min(MAX_OUTPUT_BYTES, Math.max(job.sourceBytes * 2, 1024)));
     const roots = [];
@@ -921,7 +930,7 @@ function createPersistentConversionQueue({ statePath, io = fs, nativeImage = nul
       if (availableBytes != null && availableBytes < requiredBytes) fail('INSUFFICIENT_STORAGE', 'The selected destination does not have enough available storage for the queued conversions.');
       roots.push({ name: path.basename(root) || 'destination', requiredBytes, availableBytes });
     }
-    return { queued: queued.length, roots };
+    return { queued: queued.length, ready: true, jobs, roots };
   }
   async function processJob(job) {
     if (cancelRequested || state.paused) return;

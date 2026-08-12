@@ -1,6 +1,6 @@
 {
   "name": "material-encryption",
-  "version": "0.1.0",
+  "version": "0.1.9",
   "description": "A Material Design 3 desktop interface for locally installed VeraCrypt.",
   "main": "src/main/main.cjs",
   "author": "Ding-Ding Projects",
@@ -19,19 +19,22 @@
     "test:design": "node scripts/verify-design-coverage.mjs",
     "test:security": "node scripts/verify-security-contract.mjs",
     "test:workflow": "node scripts/verify-workflow-inventory.mjs",
-    "test:all": "npm run test:brand && npm run test:design && npm run test:security && npm run test:workflow && npm test",
+    "test:package": "node scripts/verify-package-manifest.mjs",
+    "test:all": "npm run test:brand && npm run test:design && npm run test:security && npm run test:workflow && npm run test:package && npm test",
     "count:lines": "node scripts/count-lines.mjs",
     "capture:runtime": "node scripts/capture-runtime.mjs",
     "capture:matrix": "node scripts/capture-matrix.mjs",
     "package": "npm run test:brand && npm run prepare:renderer && electron-builder --win --x64 --dir",
-    "dist": "npm run test:brand && npm run prepare:renderer && electron-builder --win squirrel --x64"
+    "dist": "npm run test:brand && npm run prepare:renderer && npm run dist:unsigned",
+    "dist:unsigned": "electron-builder --win squirrel --x64"
   },
   "dependencies": {
     "@babel/standalone": "7.29.0",
     "pdf-lib": "1.17.1",
     "qrcode": "1.5.4",
     "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "react-dom": "18.3.1",
+    "sharp": "0.35.3"
   },
   "devDependencies": {
     "electron": "43.4.0",
