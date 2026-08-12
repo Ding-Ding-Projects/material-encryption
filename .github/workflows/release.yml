@@ -45,6 +45,34 @@ jobs:
         run: |
           npm run prepare:renderer
 
+      - name: Seed the previous Squirrel.Windows full package
+        id: previous
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          $packageVersion = [version](node -p "require('./package.json').version")
+          if ($LASTEXITCODE -ne 0) { throw 'The current package version could not be resolved for delta generation.' }
+          $releases = gh api 'repos/${{ github.repository }}/releases?per_page=100' | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) { throw 'Published releases could not be listed for delta generation.' }
+          $candidates = foreach ($release in $releases | Where-Object { -not $_.draft -and -not $_.prerelease }) {
+            foreach ($asset in $release.assets) {
+              if ($asset.name -match '^material-encryption-(?<version>\d+\.\d+\.\d+)-full\.nupkg$') {
+                $candidateVersion = [version]$Matches.version
+                if ($candidateVersion -lt $packageVersion) { [pscustomobject]@{ Tag = $release.tag_name; Name = $asset.name; Version = $candidateVersion } }
+              }
+            }
+          }
+          $candidate = @($candidates | Sort-Object Version -Descending | Select-Object -First 1)
+          if ($candidate.Count -ne 1) { throw 'No published older full package is available for required delta generation.' }
+          $artifactDirectory = Join-Path $PWD 'dist/squirrel-windows'
+          New-Item -ItemType Directory -Force -Path $artifactDirectory | Out-Null
+          gh release download $candidate[0].Tag --pattern $candidate[0].Name --dir $artifactDirectory
+          if ($LASTEXITCODE -ne 0) { throw 'The previous full Squirrel.Windows package could not be downloaded.' }
+          $previousPackages = @(Get-ChildItem -LiteralPath $artifactDirectory -File -Filter '*-full.nupkg')
+          if ($previousPackages.Count -ne 1) { throw "Expected exactly one previous full package; found $($previousPackages.Count)." }
+          "package=$($previousPackages[0].Name)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
       - name: Build unsigned Squirrel.Windows artifacts
         shell: pwsh
         run: |
@@ -59,27 +87,42 @@ jobs:
           $artifactDirectory = Join-Path $PWD 'dist/squirrel-windows'
           $setupName = "MaterialEncryption-Setup-$packageVersion-x64.exe"
           $fullPackageName = "material-encryption-$packageVersion-full.nupkg"
+          $deltaPackageName = "material-encryption-$packageVersion-delta.nupkg"
+          $previousPackageName = '${{ steps.previous.outputs.package }}'
           $setupPath = Join-Path $artifactDirectory $setupName
           $releaseIndex = Join-Path $artifactDirectory 'RELEASES'
           $fullPackagePath = Join-Path $artifactDirectory $fullPackageName
-          foreach ($requiredPath in @($setupPath, $releaseIndex, $fullPackagePath)) {
+          $deltaPackagePath = Join-Path $artifactDirectory $deltaPackageName
+          foreach ($requiredPath in @($setupPath, $releaseIndex, $fullPackagePath, $deltaPackagePath)) {
             if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) { throw "Required Squirrel.Windows artifact was not produced: $requiredPath" }
           }
           $unexpectedSetups = @(Get-ChildItem -LiteralPath $artifactDirectory -File -Filter '*Setup*.exe' | Where-Object Name -ne $setupName)
-          $unexpectedFullPackages = @(Get-ChildItem -LiteralPath $artifactDirectory -File -Filter '*-full.nupkg' | Where-Object Name -ne $fullPackageName)
-          if ($unexpectedSetups.Count -ne 0 -or $unexpectedFullPackages.Count -ne 0) { throw 'The Squirrel.Windows output contains an unexpected setup or full package name.' }
+          $expectedPackageNames = @($previousPackageName, $deltaPackageName, $fullPackageName)
+          $unexpectedPackages = @(Get-ChildItem -LiteralPath $artifactDirectory -File -Filter '*.nupkg' | Where-Object Name -notin $expectedPackageNames)
+          if ($unexpectedSetups.Count -ne 0 -or $unexpectedPackages.Count -ne 0) { throw 'The Squirrel.Windows output contains an unexpected setup or package name.' }
           $releaseEntries = @(Get-Content -LiteralPath $releaseIndex | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-          if ($releaseEntries.Count -ne 1) { throw "RELEASES must contain exactly one full-package entry; found $($releaseEntries.Count)." }
-          $escapedFullPackageName = [regex]::Escape($fullPackageName)
-          if ($releaseEntries[0] -notmatch "^[A-Fa-f0-9]{40}\s+$escapedFullPackageName\s+\d+$") { throw 'RELEASES does not link the exact full package name.' }
+          if ($releaseEntries.Count -ne 3) { throw "RELEASES must contain the previous full, current delta, and current full package entries; found $($releaseEntries.Count)." }
+          foreach ($packageName in $expectedPackageNames) {
+            $escapedPackageName = [regex]::Escape($packageName)
+            $matchingEntry = @($releaseEntries | Where-Object { $_ -match "^(?<sha>[A-Fa-f0-9]{40})\s+$escapedPackageName\s+(?<size>\d+)$" })
+            if ($matchingEntry.Count -ne 1) { throw "RELEASES does not link the exact package name: $packageName" }
+            $null = $matchingEntry[0] -match "^(?<sha>[A-Fa-f0-9]{40})\s+$escapedPackageName\s+(?<size>\d+)$"
+            $packagePath = Join-Path $artifactDirectory $packageName
+            $actualSha = (Get-FileHash -Algorithm SHA1 -LiteralPath $packagePath).Hash
+            $actualSize = (Get-Item -LiteralPath $packagePath).Length
+            if ($actualSha -ne $Matches.sha -or $actualSize -ne [long]$Matches.size) { throw "RELEASES integrity metadata does not match the package bytes: $packageName" }
+          }
           $signature = Get-AuthenticodeSignature -LiteralPath $setupPath
           if ($signature.Status -ne 'NotSigned') { throw "Installer signature state is $($signature.Status), expected NotSigned." }
           $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $setupPath).Hash
           $stage = Join-Path $env:RUNNER_TEMP 'release-assets'
           New-Item -ItemType Directory -Force -Path $stage | Out-Null
           Copy-Item -LiteralPath $setupPath -Destination $stage
-          Copy-Item -LiteralPath $releaseIndex -Destination $stage
+          $publishedReleaseEntries = @($releaseEntries | Where-Object { $_ -match "\s+$([regex]::Escape($deltaPackageName))\s+\d+$" -or $_ -match "\s+$([regex]::Escape($fullPackageName))\s+\d+$" })
+          if ($publishedReleaseEntries.Count -ne 2) { throw 'The current full and delta package rows could not be isolated for publication.' }
+          Set-Content -LiteralPath (Join-Path $stage 'RELEASES') -Value $publishedReleaseEntries -Encoding ascii
           Copy-Item -LiteralPath $fullPackagePath -Destination $stage
+          Copy-Item -LiteralPath $deltaPackagePath -Destination $stage
           $dimSumName = 'hk-dish-0001-classic-har-gow.png'
           $dimSumUrl = "https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/$dimSumName"
           $dimSumPath = Join-Path $stage $dimSumName
@@ -103,16 +146,19 @@ jobs:
             installer_sha256 = $hash
             releases = 'RELEASES'
             full_package = $fullPackageName
+            delta_package = $deltaPackageName
+            delta_base_package = $previousPackageName
             dim_sum_photo = $dimSumName
             dim_sum_source = $dimSumUrl
             signature = $signature.Status.ToString()
           } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $stage 'build-evidence.json') -Encoding utf8
-          $expectedAssets = @($setupName, 'RELEASES', $fullPackageName, 'build-evidence.json', $dimSumName)
+          $expectedAssets = @($setupName, 'RELEASES', $deltaPackageName, $fullPackageName, 'build-evidence.json', $dimSumName)
           $stagedAssets = @(Get-ChildItem -LiteralPath $stage -File | ForEach-Object Name | Sort-Object)
           if (Compare-Object ($expectedAssets | Sort-Object) $stagedAssets) { throw 'Release staging does not contain the exact required asset names.' }
           "stage=$stage" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "setup=$setupName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "package=$fullPackageName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "delta=$deltaPackageName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "dim_sum=$dimSumName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "sha256=$hash" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
@@ -135,7 +181,7 @@ jobs:
           $lineCount = Get-Content -Raw "$env:RUNNER_TEMP/line-count.md"
           $notesPath = Join-Path $env:RUNNER_TEMP 'release-notes.md'
           $assets = @(Get-ChildItem -LiteralPath '${{ steps.evidence.outputs.stage }}' -File | ForEach-Object FullName)
-          $expectedAssetNames = @('${{ steps.evidence.outputs.setup }}', 'RELEASES', '${{ steps.evidence.outputs.package }}', 'build-evidence.json', '${{ steps.evidence.outputs.dim_sum }}') | Sort-Object
+          $expectedAssetNames = @('${{ steps.evidence.outputs.setup }}', 'RELEASES', '${{ steps.evidence.outputs.delta }}', '${{ steps.evidence.outputs.package }}', 'build-evidence.json', '${{ steps.evidence.outputs.dim_sum }}') | Sort-Object
           $assetNames = @(Get-ChildItem -LiteralPath '${{ steps.evidence.outputs.stage }}' -File | ForEach-Object Name | Sort-Object)
           if (Compare-Object $expectedAssetNames $assetNames) { throw 'Release staging does not contain the exact required asset names.' }
           Set-Content -LiteralPath $notesPath -Value 'Draft release preparation.' -Encoding utf8
@@ -153,6 +199,8 @@ jobs:
           ## Installer
 
           - __SETUP__
+          - Full update package: __FULL__
+          - Delta update package: __DELTA__
           - SHA-256: __HASH__
           - Signature: NotSigned
 
@@ -184,6 +232,8 @@ jobs:
           $notes = $template.Replace('__TAG__', $tag).
             Replace('__SHA__', '${{ github.sha }}').
             Replace('__SETUP__', '${{ steps.evidence.outputs.setup }}').
+            Replace('__FULL__', '${{ steps.evidence.outputs.package }}').
+            Replace('__DELTA__', '${{ steps.evidence.outputs.delta }}').
             Replace('__DIM_SUM__', '${{ steps.evidence.outputs.dim_sum }}').
             Replace('__HASH__', '${{ steps.evidence.outputs.sha256 }}').
             Replace('__STARTED__', $started.ToUniversalTime().ToString('o')).
@@ -209,10 +259,18 @@ jobs:
           if (Compare-Object $expectedAssetNames $publishedAssetNames) { throw 'Published release assets do not match the exact required names.' }
           $publishedProofDirectory = Join-Path $env:RUNNER_TEMP 'published-release-proof'
           New-Item -ItemType Directory -Force -Path $publishedProofDirectory | Out-Null
-          gh release download $tag --pattern RELEASES --dir $publishedProofDirectory --clobber
-          if ($LASTEXITCODE -ne 0) { throw 'Published RELEASES could not be downloaded for verification.' }
+          gh release download $tag --pattern RELEASES --pattern '*.nupkg' --dir $publishedProofDirectory --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'Published Squirrel.Windows update assets could not be downloaded for verification.' }
           $releaseIndexText = Get-Content -Raw -LiteralPath (Join-Path $publishedProofDirectory 'RELEASES')
-          if ($releaseIndexText -notmatch "(?m)^[A-Fa-f0-9]{40}\s+$([regex]::Escape('${{ steps.evidence.outputs.package }}'))\s+\d+\s*$") { throw 'Published RELEASES does not link the exact published full package name.' }
+          foreach ($packageName in @('${{ steps.evidence.outputs.delta }}', '${{ steps.evidence.outputs.package }}')) {
+            $packagePath = Join-Path $publishedProofDirectory $packageName
+            if (-not (Test-Path -LiteralPath $packagePath -PathType Leaf)) { throw "Published package is missing: $packageName" }
+            $escapedPackageName = [regex]::Escape($packageName)
+            if ($releaseIndexText -notmatch "(?m)^(?<sha>[A-Fa-f0-9]{40})\s+$escapedPackageName\s+(?<size>\d+)\s*$") { throw "Published RELEASES does not link the exact published package: $packageName" }
+            $actualSha = (Get-FileHash -Algorithm SHA1 -LiteralPath $packagePath).Hash
+            $actualSize = (Get-Item -LiteralPath $packagePath).Length
+            if ($actualSha -ne $Matches.sha -or $actualSize -ne [long]$Matches.size) { throw "Published RELEASES integrity metadata does not match the downloaded package: $packageName" }
+          }
           if ($published.body -match '[\x00-\x08\x0B\x0C\x0E-\x1F]' -or $published.body -match '__[A-Z_]+__' -or $published.body -match '\$\(') { throw 'Published release notes contain control characters or unresolved placeholders.' }
 
       - name: Collect safe build outputs

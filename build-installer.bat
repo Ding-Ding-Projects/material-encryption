@@ -17,6 +17,7 @@ for /f "usebackq delims=" %%V in (`node -p "require('./package.json').version"`)
 if not defined ME_VERSION (echo ERROR: package.json version could not be resolved.& exit /b 61)
 set "ME_SETUP=%~dp0dist\squirrel-windows\MaterialEncryption-Setup-%ME_VERSION%-x64.exe"
 set "ME_FULL_PACKAGE=%~dp0dist\squirrel-windows\material-encryption-%ME_VERSION%-full.nupkg"
+set "ME_DELTA_PACKAGE=%~dp0dist\squirrel-windows\material-encryption-%ME_VERSION%-delta.nupkg"
 if not exist "%ME_SETUP%" (echo ERROR: Exact Setup artifact was not produced: %ME_SETUP%.& exit /b 61)
 if not exist "%~dp0dist\squirrel-windows\RELEASES" (echo ERROR: Squirrel.Windows RELEASES was not produced.& exit /b 62)
 if not exist "%ME_FULL_PACKAGE%" (echo ERROR: Exact full Squirrel.Windows package was not produced: %ME_FULL_PACKAGE%.& exit /b 63)

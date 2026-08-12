@@ -15,6 +15,7 @@ const jobPreamble = workflow.slice(workflow.indexOf('jobs:'), workflow.indexOf('
 assert.ok(!jobPreamble.includes('GH_TOKEN:'), 'Release credentials must not exist at job scope where electron-builder can auto-publish.');
 const publishStep = workflow.slice(workflow.indexOf('- name: Publish one immutable release for this run'), workflow.indexOf('- name: Collect safe build outputs'));
 const buildStep = workflow.slice(workflow.indexOf('- name: Build unsigned Squirrel.Windows artifacts'), workflow.indexOf('- name: Collect and verify release evidence'));
+const previousStep = workflow.slice(workflow.indexOf('- name: Seed the previous Squirrel.Windows full package'), workflow.indexOf('- name: Build unsigned Squirrel.Windows artifacts'));
 const evidenceStep = workflow.slice(workflow.indexOf('- name: Collect and verify release evidence'), workflow.indexOf('- name: Count project lines'));
 assert.ok(publishStep.includes('GH_TOKEN:'), 'Release credentials must be scoped to the explicit publication step.');
 assert.ok(publishStep.includes('--draft'), 'Publication must start from a private draft.');
@@ -25,12 +26,19 @@ assert.doesNotMatch(buildStep, /npm run (?:test|lint)|npm test/, 'GitHub Actions
 assert.doesNotMatch(workflow, /^\s+(?:npm test|npm run test(?::[^\s]+)?|npm run lint(?::[^\s]+)?)\s*$/gm, 'GitHub Actions must not invoke any test or lint script.');
 assert.ok(evidenceStep.includes('$setupName = "MaterialEncryption-Setup-$packageVersion-x64.exe"'), 'Collector must require the exact setup name.');
 assert.ok(evidenceStep.includes('$fullPackageName = "material-encryption-$packageVersion-full.nupkg"'), 'Collector must require the exact full package name.');
-assert.ok(evidenceStep.includes("$releaseEntries[0] -notmatch"), 'Collector must validate the RELEASES entry itself.');
+assert.ok(evidenceStep.includes('$deltaPackageName = "material-encryption-$packageVersion-delta.nupkg"'), 'Collector must require the exact generated delta package name.');
+assert.ok(previousStep.includes('$candidateVersion -lt $packageVersion'), 'Delta generation must reject same-version and newer base packages.');
+assert.ok(previousStep.includes('gh release download $candidate[0].Tag --pattern $candidate[0].Name'), 'Delta generation must seed an exact older published full package.');
+assert.ok(evidenceStep.includes('foreach ($packageName in $expectedPackageNames)'), 'Collector must validate every RELEASES package entry.');
+assert.ok(evidenceStep.includes('Get-FileHash -Algorithm SHA1'), 'Collector must verify package bytes against RELEASES integrity metadata.');
 assert.ok(evidenceStep.includes("'build-evidence.json'"), 'Collector must stage build evidence.');
 assert.ok(evidenceStep.includes("'hk-dish-0001-classic-har-gow.png'"), 'Collector must stage the selected public catalog dim-sum photo.');
 assert.ok(evidenceStep.includes('[System.Drawing.Image]::FromFile($dimSumPath)'), 'Collector must decode the selected dim-sum photo.');
 assert.doesNotMatch(evidenceStep, /Get-ChildItem[^\r\n]+-Recurse|Select-Object -First/, 'Collector must not accept the first recursively matched artifact.');
 assert.ok(publishStep.includes('Compare-Object $expectedAssetNames $publishedAssetNames'), 'Publication must compare exact published asset names.');
 assert.ok(publishStep.includes('gh release download $tag --pattern RELEASES'), 'Publication must download the published RELEASES asset before validating linkage.');
+assert.ok(publishStep.includes("--pattern '*.nupkg'"), 'Publication must download and validate every published update package.');
+assert.ok(publishStep.includes('Published RELEASES integrity metadata does not match the downloaded package'), 'Publication must verify downloaded package bytes against RELEASES.');
+assert.ok(publishStep.includes("Replace('__DELTA__', '${{ steps.evidence.outputs.delta }}')"), 'Release notes must identify the exact delta update package.');
 assert.ok(publishStep.includes('$tag = "v$packageVersion-build.${{ github.run_number }}"'), 'Unique tags must preserve the monotonic package version without impersonating it.');
 console.log(`PASS: ${jobs.length} workflow job has an explicit dependency inventory and cache-miss bootstrap path.`);

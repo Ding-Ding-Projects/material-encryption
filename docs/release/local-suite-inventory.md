@@ -15,7 +15,7 @@ Every command below belongs in the final release-shutdown pass. The evidence col
 | Unpacked package | `npm run package` | Real packaged `resources/app.asar` from the candidate commit |
 | Executable identity | `pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/verify-packaged-icon.ps1 -Executable 'dist\win-unpacked\Material Encryption.exe'` | Extracted icon, executable hash, and unsigned state |
 | Runtime smoke and capture | `npm run capture:matrix -- --port=<isolated-port>` | Must be refreshed to cover all 14 destinations, including Ollama Studio, plus required semantic states |
-| Installer | `build-installer.bat /s` | Exact versioned Squirrel.Windows setup and full-package names, `RELEASES` linkage, source commit, hash, and unsigned state |
+| Installer | `build-installer.bat /s` | Exact versioned Squirrel.Windows setup, full and generated delta package names, `RELEASES` SHA-1/byte-length linkage, source commit, hash, and unsigned state |
 
 ## Node test breakdown
 
