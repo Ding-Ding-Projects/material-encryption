@@ -49,6 +49,23 @@ const enqueueInChunks = async (payload = {}) => {
 };
 contextBridge.exposeInMainWorld('materialEncryption', Object.freeze({
   getStatus: () => invoke('vc:status'),
+  installVeraCrypt: () => invoke('vc:install'),
+  installStatus: () => invoke('vc:install-status'),
+  listDrives: () => invoke('vc:drives'),
+  volumeCapabilities: () => invoke('volume:capabilities'),
+  createVolume: (options) => invoke('volume:create', options),
+  verifyVolume: (options) => invoke('volume:verify', options),
+  changeVolumePassword: (options) => invoke('volume:change-password', options),
+  backupVolumeHeader: (options) => invoke('volume:backup-header', options),
+  restoreVolumeHeader: (options) => invoke('volume:restore-header', options),
+  selectNewVolumeTarget: () => invoke('volume:select-target'),
+  onVolumeCreateProgress: (listener) => {
+    if (typeof listener !== 'function') throw new Error('A progress listener function is required.');
+    const handler = (_event, progress) => listener(progress);
+    ipcRenderer.on('volume:create-progress', handler);
+    return () => ipcRenderer.removeListener('volume:create-progress', handler);
+  },
+  elevationState: () => invoke('app:elevated'),
   mount: (options) => invoke('vc:mount', options),
   unmount: (options) => invoke('vc:unmount', options),
   unmountAll: (options) => invoke('vc:unmount-all', options),

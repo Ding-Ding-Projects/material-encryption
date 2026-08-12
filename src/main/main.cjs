@@ -8,6 +8,17 @@ const locks = require('./credential-store.cjs');
 const converter = require('./file-converter.cjs');
 const ollama = require('./ollama-manager.cjs');
 const logos = require('./logo-service.cjs');
+const elevation = require('./elevation.cjs');
+const engine = require('./volume-engine.cjs');
+
+// Volume operations need administrator rights, so relaunch elevated once per
+// launch. Declining the prompt keeps the app running unelevated rather than
+// leaving the user with nothing.
+if (process.platform === 'win32' && !elevation.isElevated() && !elevation.alreadyRelaunched()) {
+  if (elevation.relaunchElevated({ isPackaged: app.isPackaged, appPath: app.getAppPath() })) {
+    app.exit(0);
+  }
+}
 
 let mainWindow;
 let converterService;
@@ -121,6 +132,76 @@ app.whenReady().then(() => {
   createWindow();
 
   register('vc:status', () => vc.getStatus());
+  register('vc:install', () => vc.install());
+
+  // Container operations performed by this application's own engine. No
+  // VeraCrypt process is involved in any of these.
+  register('volume:capabilities', () => ({ ciphers: engine.availableCiphers(), prfs: engine.availablePrfs(), minimumBytes: engine.MIN_VOLUME_BYTES, maximumBytes: engine.MAX_VOLUME_BYTES }));
+  register('volume:create', (value) => {
+    const payload = exactRecord(value, ['volume', 'password', 'sizeBytes', 'cipher', 'prf', 'pim', 'volumeLabel', 'filesystem', 'overwrite'], 'Volume payload');
+    return engine.create({
+      volume: boundedText(payload.volume, 'Container path', 2048),
+      password: boundedText(payload.password, 'Password', 128),
+      sizeBytes: Number(payload.sizeBytes),
+      cipher: boundedText(payload.cipher || 'AES', 'Cipher', 32),
+      prf: boundedText(payload.prf || 'HMAC-SHA-512', 'Key derivation function', 32),
+      pim: Number(payload.pim) || 0,
+      volumeLabel: boundedText(payload.volumeLabel || 'ENCRYPTED', 'Volume label', 11),
+      filesystem: boundedText(payload.filesystem || 'FAT32', 'Filesystem', 16),
+      overwrite: boolean(payload.overwrite, 'overwrite'),
+      onProgress: (progress) => { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('volume:create-progress', progress); }
+    });
+  });
+  register('volume:verify', (value) => {
+    const payload = exactRecord(value, ['volume', 'password', 'pim', 'prf', 'useBackupHeader'], 'Volume payload');
+    return engine.verify({
+      volume: boundedText(payload.volume, 'Container path', 2048),
+      password: boundedText(payload.password, 'Password', 128),
+      pim: Number(payload.pim) || 0,
+      prf: boundedText(payload.prf || 'Autodetection', 'Key derivation function', 32),
+      useBackupHeader: Boolean(payload.useBackupHeader)
+    });
+  });
+  register('volume:change-password', (value) => {
+    const payload = exactRecord(value, ['volume', 'currentPassword', 'currentPim', 'currentPrf', 'newPassword', 'newPim', 'newPrf'], 'Volume payload');
+    return engine.changePassword({
+      volume: boundedText(payload.volume, 'Container path', 2048),
+      currentPassword: boundedText(payload.currentPassword, 'Current password', 128),
+      currentPim: Number(payload.currentPim) || 0,
+      currentPrf: boundedText(payload.currentPrf || 'Autodetection', 'Key derivation function', 32),
+      newPassword: boundedText(payload.newPassword, 'New password', 128),
+      newPim: Number(payload.newPim) || 0,
+      newPrf: boundedText(payload.newPrf || 'HMAC-SHA-512', 'New key derivation function', 32)
+    });
+  });
+  register('volume:backup-header', async (value) => {
+    const payload = exactRecord(value, ['volume', 'password', 'pim', 'prf'], 'Volume payload');
+    const result = await dialog.showSaveDialog(mainWindow, { title: 'Save VeraCrypt header backup', defaultPath: 'volume-header-backup.hc', filters: [{ name: 'Header backup', extensions: ['hc'] }] });
+    if (result.canceled || !result.filePath) return null;
+    return engine.backupHeader({
+      volume: boundedText(payload.volume, 'Container path', 2048),
+      password: boundedText(payload.password, 'Password', 128),
+      pim: Number(payload.pim) || 0,
+      prf: boundedText(payload.prf || 'Autodetection', 'Key derivation function', 32),
+      destination: result.filePath
+    });
+  });
+  register('volume:restore-header', (value) => {
+    const payload = exactRecord(value, ['volume', 'password', 'pim', 'prf'], 'Volume payload');
+    return engine.restoreHeader({
+      volume: boundedText(payload.volume, 'Container path', 2048),
+      password: boundedText(payload.password, 'Password', 128),
+      pim: Number(payload.pim) || 0,
+      prf: boundedText(payload.prf || 'Autodetection', 'Key derivation function', 32)
+    });
+  });
+  register('volume:select-target', async () => {
+    const result = await dialog.showSaveDialog(mainWindow, { title: 'Create a new encrypted container', defaultPath: 'container.hc', filters: [{ name: 'Encrypted container', extensions: ['hc'] }] });
+    return result.canceled || !result.filePath ? null : result.filePath;
+  });
+  register('vc:install-status', () => vc.installStatus());
+  register('vc:drives', () => vc.listDrives());
+  register('app:elevated', () => ({ elevated: elevation.isElevated(), relaunchAttempted: elevation.alreadyRelaunched() }));
   register('vc:mount', (value) => {
     const payload = record(value);
     return vc.mount({

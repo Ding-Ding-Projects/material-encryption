@@ -255,5 +255,19 @@
 
   new MutationObserver(decorate).observe(document.body, { childList: true, subtree: true });
   decorate(); refreshLocks();
-  api.getStatus().then((result) => { if (!result.ok || !result.value.installed) notify('VeraCrypt is required', 'Install VeraCrypt from veracrypt.fr to enable volume operations.', 'error'); else document.documentElement.dataset.veracrypt = 'ready'; });
+  // Container work — creating, opening, re-keying, header backup and restore —
+  // is performed by this app's own engine and needs nothing installed. Only
+  // assigning a drive letter needs the VeraCrypt kernel driver, because Windows
+  // will not load an unsigned filesystem driver.
+  api.getStatus().then((result) => {
+    if (!result.ok) { notify('Volume status unavailable', result.error, 'error'); return; }
+    const status = result.value;
+    document.documentElement.dataset.veracrypt = status.installed ? 'ready' : 'engine-only';
+    document.documentElement.dataset.elevated = status.elevated ? 'yes' : 'no';
+    if (!status.installed) {
+      notify('Mounting to a drive letter is unavailable', 'Creating, opening, re-keying and repairing containers all work without it. Assigning a drive letter needs the VeraCrypt kernel driver, which Windows only loads when signed.', 'warning');
+    } else if (!status.elevated) {
+      notify('Running without administrator rights', 'Containers work normally. Mounting and unmounting drive letters will be refused by the driver until the app is restarted elevated.', 'warning');
+    }
+  });
 })();
