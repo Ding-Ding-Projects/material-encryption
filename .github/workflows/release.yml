@@ -1,0 +1,159 @@
+name: Build and publish Windows release
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-2025
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN }}
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      WIN_CSC_LINK: ""
+      WIN_CSC_KEY_PASSWORD: ""
+    steps:
+      - name: Record workflow start
+        id: timing
+        shell: pwsh
+        run: |
+          "started=$([DateTimeOffset]::UtcNow.ToString('o'))" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Node.js from the project contract
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Restore dependencies
+        shell: pwsh
+        run: |
+          npm ci --no-audit --no-fund
+
+      - name: Generate production renderer
+        shell: pwsh
+        run: |
+          npm run prepare:renderer
+
+      - name: Build unsigned Squirrel.Windows artifacts
+        shell: pwsh
+        run: |
+          npm run dist
+
+      - name: Collect and verify release evidence
+        id: evidence
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem -Path dist -Recurse -Filter *Setup.exe | Select-Object -First 1
+          if (-not $setup) { throw 'Setup.exe was not produced.' }
+          $releaseIndex = Join-Path $setup.Directory.FullName 'RELEASES'
+          $packages = @(Get-ChildItem -Path $setup.Directory.FullName -Filter *.nupkg)
+          if (-not (Test-Path -LiteralPath $releaseIndex)) { throw 'RELEASES was not produced beside Setup.exe.' }
+          if ($packages.Count -lt 1) { throw 'No Squirrel.Windows package was produced.' }
+          $signature = Get-AuthenticodeSignature -LiteralPath $setup.FullName
+          if ($signature.Status -ne 'NotSigned') { throw "Installer signature state is $($signature.Status), expected NotSigned." }
+          $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $setup.FullName).Hash
+          $stage = Join-Path $env:RUNNER_TEMP 'release-assets'
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item -LiteralPath $setup.FullName -Destination $stage
+          Copy-Item -LiteralPath $releaseIndex -Destination $stage
+          Copy-Item -LiteralPath $packages.FullName -Destination $stage
+          @{
+            run_id = '${{ github.run_id }}'
+            commit = '${{ github.sha }}'
+            runner_os = '${{ runner.os }}'
+            runner_arch = '${{ runner.arch }}'
+            installer = $setup.Name
+            installer_sha256 = $hash
+            signature = $signature.Status.ToString()
+          } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $stage 'build-evidence.json') -Encoding utf8
+          "stage=$stage" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "setup=$($setup.Name)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "sha256=$hash" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Count project lines
+        shell: pwsh
+        run: |
+          npm run count:lines | Tee-Object -FilePath "$env:RUNNER_TEMP/line-count.md"
+
+      - name: Publish one immutable release for this run
+        shell: pwsh
+        run: |
+          $completed = [DateTimeOffset]::UtcNow
+          $started = [DateTimeOffset]::Parse('${{ steps.timing.outputs.started }}')
+          $duration = $completed - $started
+          $tag = "v0.1.${{ github.run_number }}"
+          $lineCount = Get-Content -Raw "$env:RUNNER_TEMP/line-count.md"
+          $notes = @"
+          # Material Encryption $tag
+
+          Windows-only unsigned Squirrel.Windows release built from `${{ github.sha }}`.
+
+          ## Installer
+
+          - `${{ steps.evidence.outputs.setup }}`
+          - SHA-256: `${{ steps.evidence.outputs.sha256 }}`
+          - Signature: `NotSigned`
+
+          > This installer is unsigned and may trigger an unknown-publisher or SmartScreen warning.
+
+          ## Verification boundary
+
+          This workflow builds, packages, verifies artifact structure, and publishes. Tests and lint are intentionally local-only and do not run in GitHub Actions. That means automation can publish a commit whose local tests were not run; the first protection is the recorded local release process.
+
+          ## Workflow timing
+
+          - Workflow started: `$($started.ToUniversalTime().ToString('o'))`
+          - Workflow completed: `$($completed.ToUniversalTime().ToString('o'))`
+          - Workflow duration: `$($duration.ToString('hh\:mm\:ss'))`
+
+          ## Line count
+
+          Reproduce with `npm run count:lines`.
+
+          $lineCount
+
+          ## Dim sum code name
+
+          No code name was assigned because this release workflow does not copy or fetch catalog assets during publishing.
+          "@
+          $notesPath = Join-Path $env:RUNNER_TEMP 'release-notes.md'
+          Set-Content -LiteralPath $notesPath -Value $notes -Encoding utf8
+          gh release create $tag "${{ steps.evidence.outputs.stage }}/*" --target "${{ github.sha }}" --title "Material Encryption $tag" --notes-file $notesPath --latest
+
+      - name: Collect safe build outputs
+        if: ${{ always() }}
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $bundle = Join-Path $env:RUNNER_TEMP 'workflow-evidence'
+          New-Item -ItemType Directory -Force -Path $bundle | Out-Null
+          if (Test-Path -LiteralPath '${{ steps.evidence.outputs.stage }}') {
+            Copy-Item -LiteralPath '${{ steps.evidence.outputs.stage }}' -Destination $bundle -Recurse
+          }
+          @{
+            run_id = '${{ github.run_id }}'
+            commit = '${{ github.sha }}'
+            job_status = '${{ job.status }}'
+            runner_os = '${{ runner.os }}'
+            runner_arch = '${{ runner.arch }}'
+          } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $bundle 'workflow-context.json') -Encoding utf8
+
+      - name: Upload safe workflow outputs
+        if: ${{ always() }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: material-encryption-${{ github.run_id }}
+          path: ${{ runner.temp }}/workflow-evidence
+          if-no-files-found: warn
+          retention-days: 7

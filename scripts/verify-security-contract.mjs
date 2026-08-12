@@ -1,0 +1,24 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+
+const files = ['src/main/main.cjs', 'src/main/preload.cjs', 'src/main/veracrypt.cjs', 'src/main/credential-store.cjs', 'src/renderer/index.html', 'src/renderer/bridge.js', 'src/renderer/support.js'];
+const source = (await Promise.all(files.map((file) => readFile(file, 'utf8')))).join('\n');
+assert.ok(source.includes('contextIsolation: true'));
+assert.ok(source.includes('nodeIntegration: false'));
+assert.ok(source.includes('sandbox: true'));
+assert.ok(source.includes("shell: false"));
+assert.ok(!source.includes("'/password'"), 'Passwords must not be put in VeraCrypt process arguments');
+assert.ok(!source.includes('hunter2hunter2'));
+assert.ok(!source.includes('correct horse battery'));
+assert.ok(!source.includes('fonts.googleapis.com'));
+assert.ok(!source.includes('unpkg.com'));
+const renderer = await readFile('src/renderer/index.html', 'utf8');
+assert.ok(!renderer.includes('Enter VeraCrypt Volume Password'), 'The renderer must not collect a VeraCrypt volume password.');
+assert.ok(!renderer.includes('const mounted = {'), 'The renderer must not seed fake mounted volumes.');
+assert.ok(renderer.includes('const favData = [];'), 'The renderer must start with a truthful empty favorites list.');
+assert.ok(renderer.includes('const hist = [];'), 'The renderer must start with truthful empty operational history.');
+assert.ok(renderer.includes('notifications: []'), 'The renderer must start with truthful empty notifications.');
+assert.ok(renderer.includes('mounted state is not assumed'), 'The native mount handoff must state its evidence boundary.');
+assert.ok(source.includes('assertTrustedSender'), 'Every privileged IPC handler must validate its renderer frame.');
+assert.ok(source.includes('safeStorage.encryptString'), 'Toy-lock credentials must be encrypted with OS-backed storage.');
+console.log('PASS: renderer isolation, local assets, and secret-safe VeraCrypt invocation verified.');

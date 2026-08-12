@@ -1,0 +1,11 @@
+Material Encryption
+Copyright 2026 Ding-Ding Projects
+
+This project provides an independent graphical interface for VeraCrypt. It is
+not affiliated with, endorsed by, or distributed by the VeraCrypt project.
+VeraCrypt remains the cryptographic engine and is distributed separately under
+its own license. See https://www.veracrypt.fr/ for VeraCrypt and its license.
+
+The original design export under design/ is retained as product-design source.
+Its generated preview runtime is used only as input to the local build process;
+production runtime assets are bundled locally and make no CDN requests.
