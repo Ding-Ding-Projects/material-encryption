@@ -151,7 +151,7 @@ jobs:
           Set-Content -LiteralPath $notesPath -Value $notes -Encoding utf8
           gh api -X PATCH "repos/${{ github.repository }}/releases/$releaseId" -F "body=@$notesPath" | Out-Null
           if ($LASTEXITCODE -ne 0) { throw 'Draft release note finalization failed.' }
-          gh api -X PATCH "repos/${{ github.repository }}/releases/$releaseId" -F draft=false -f make_latest=true | Out-Null
+          gh api -X PATCH "repos/${{ github.repository }}/releases/$releaseId" -f "tag_name=$tag" -f "target_commitish=${{ github.sha }}" -F draft=false -f make_latest=true | Out-Null
           if ($LASTEXITCODE -ne 0) { throw 'Release publication failed.' }
           $published = gh release view $tag --json body,targetCommitish,isDraft,isPrerelease,publishedAt,assets | ConvertFrom-Json
           $completed = [DateTimeOffset]::Parse($published.publishedAt)

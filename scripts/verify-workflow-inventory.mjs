@@ -17,4 +17,5 @@ const publishStep = workflow.slice(workflow.indexOf('- name: Publish one immutab
 assert.ok(publishStep.includes('GH_TOKEN:'), 'Release credentials must be scoped to the explicit publication step.');
 assert.ok(publishStep.includes('--draft'), 'Publication must start from a private draft.');
 assert.ok(publishStep.includes('releases/$releaseId'), 'Draft finalization must use the exact numeric release ID.');
+assert.ok(publishStep.includes('tag_name=$tag') && publishStep.includes('target_commitish=${{ github.sha }}'), 'Draft publication must restore the intended tag and exact target SHA atomically.');
 console.log(`PASS: ${jobs.length} workflow job has an explicit dependency inventory and cache-miss bootstrap path.`);
