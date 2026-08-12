@@ -19,6 +19,7 @@
     "test:workflow": "node scripts/verify-workflow-inventory.mjs",
     "test:all": "npm run test:design && npm run test:security && npm run test:workflow && npm test",
     "count:lines": "node scripts/count-lines.mjs",
+    "capture:runtime": "node scripts/capture-runtime.mjs",
     "package": "npm run prepare:renderer && electron-builder --win --x64 --dir",
     "dist": "npm run prepare:renderer && electron-builder --win squirrel --x64"
   },
@@ -31,7 +32,8 @@
   "devDependencies": {
     "electron": "43.4.0",
     "electron-builder": "26.15.3",
-    "electron-builder-squirrel-windows": "26.15.3"
+    "electron-builder-squirrel-windows": "26.15.3",
+    "ws": "^8.21.0"
   },
   "build": {
     "appId": "town.andyville.materialencryption",

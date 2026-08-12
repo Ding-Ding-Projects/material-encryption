@@ -48,7 +48,11 @@ See [Security architecture](docs/security/README.md) for failure modes and verif
 
 ![Material Encryption Volumes screen with truthful empty drive rows, left navigation, and docked tabs](docs/assets/material-encryption-volumes-dark.png)
 
-This capture came from the packaged `app.asar` on an isolated hidden Windows desktop. No mockups or design-preview images are presented as runtime proof. Additional destinations, interaction states, narrow layouts, and light theme are tracked in the release capture matrix.
+![Independent four-step lock wizard anchored to the exact Volumes heading](docs/assets/material-encryption-element-lock-wizard.png)
+
+![Searchable keyboard navigator for selecting any exact rendered element](docs/assets/material-encryption-element-navigator.png)
+
+These captures came from the packaged `app.asar` on an isolated hidden Windows desktop. No mockups or design-preview images are presented as runtime proof. Additional destinations, interaction states, narrow layouts, and light theme are tracked in the release capture matrix.
 
 </details>
 

@@ -53,7 +53,7 @@ jobs:
         id: evidence
         shell: pwsh
         run: |
-          $setup = Get-ChildItem -Path dist -Recurse -Filter *Setup.exe | Select-Object -First 1
+          $setup = Get-ChildItem -Path dist -Recurse -Filter *.exe | Where-Object { $_.Name -match 'Setup.*\.exe$' } | Select-Object -First 1
           if (-not $setup) { throw 'Setup.exe was not produced.' }
           $releaseIndex = Join-Path $setup.Directory.FullName 'RELEASES'
           $packages = @(Get-ChildItem -Path $setup.Directory.FullName -Filter *.nupkg)

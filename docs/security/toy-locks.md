@@ -21,4 +21,4 @@ Passwords are processed with a per-lock random salt and `scrypt`. TOTP uses RFC 
 
 ## Verification
 
-`npm run test:all` verifies the bridge contract, secret-safe process invocation, and RFC 6238 vectors for SHA-1, SHA-256, and SHA-512. Packaged runtime verification exercises the exact-element context menu, wizard anchoring, keyboard navigator, unlock, relock, and activation interception on a hidden desktop.
+`npm run test:all` verifies the bridge contract, secret-safe process invocation, and RFC 6238 vectors for SHA-1, SHA-256, and SHA-512. `npm run capture:runtime -- --port=<port> --state=wizard --output=<path>` verifies a single isolated packaged renderer page, exercises the exact-element context menu and wizard through real events, and captures that state. Packaged runtime verification also covers keyboard navigation, unlock, relock, and activation interception on a hidden desktop.

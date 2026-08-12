@@ -6,11 +6,11 @@ Material Encryption is an independent Windows Electron interface generated from 
 
 ## Verification
 
-- `npm run test:design` checks the 12 designed destinations in the production renderer.
-- `npm run test:security` checks isolation, local assets, and the password-argument prohibition.
-- `npm test` covers drive-letter and volume-identifier validation.
-- `build.bat /s` and `build-installer.bat /s` are the supported local build and packaging paths.
+- `npm run test:all`: 6/6 Node tests plus design, security, and workflow contract checks passed.
+- Packaged renderer: launched on an isolated hidden Windows desktop and captured through its single CDP page.
+- Local installer: unsigned Squirrel.Windows setup, `RELEASES`, and full package verified.
+- `build.bat /s` and `build-installer.bat /s` remain the supported local build and packaging paths.
 
 ## Remaining release work
 
-The packaged app still needs isolated headless runtime interaction, a real capture matrix, unsigned Squirrel artifact verification, the release workflow, and first-release publication. This section must be replaced with exact commit, run, release, asset, and hash evidence after those steps finish.
+Remote run `31561973251` built successfully but its evidence collection failed because the setup filename glob expected `*Setup.exe`; the follow-up commit accepts the configured `Setup-<version>-<arch>.exe` shape. First-release publication, remote asset verification, and the final cleanup audit remain pending.
