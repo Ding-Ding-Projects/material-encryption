@@ -4,7 +4,9 @@ import path from 'node:path';
 const root = process.cwd();
 const renderer = path.join(root, 'src', 'renderer');
 const vendor = path.join(renderer, 'vendor');
+const assets = path.join(renderer, 'assets');
 await mkdir(vendor, { recursive: true });
+await mkdir(assets, { recursive: true });
 
 let html = await readFile(path.join(root, 'design', 'VeraCrypt Material.dc.html'), 'utf8');
 const requiredPrototypeMarkers = [
@@ -57,4 +59,5 @@ await writeFile(path.join(renderer, 'support.js'), support, 'utf8');
 await copyFile(path.join(root, 'node_modules', 'react', 'umd', 'react.production.min.js'), path.join(vendor, 'react.production.min.js'));
 await copyFile(path.join(root, 'node_modules', 'react-dom', 'umd', 'react-dom.production.min.js'), path.join(vendor, 'react-dom.production.min.js'));
 await copyFile(path.join(root, 'node_modules', '@babel', 'standalone', 'babel.min.js'), path.join(vendor, 'babel.min.js'));
+await copyFile(path.join(root, 'design', 'assets', 'material-encryption-logo.png'), path.join(assets, 'material-encryption-logo.png'));
 console.log('Prepared renderer from design/VeraCrypt Material.dc.html with local runtime assets.');

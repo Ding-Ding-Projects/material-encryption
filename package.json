@@ -11,20 +11,24 @@
   },
   "scripts": {
     "prepare:renderer": "node scripts/prepare-renderer.mjs",
+    "generate:brand": "py -3 scripts/generate-brand-assets.py",
+    "test:brand": "node scripts/verify-brand-assets.mjs",
     "prestart": "npm run prepare:renderer",
     "start": "electron .",
     "test": "node --test tests/*.test.mjs",
     "test:design": "node scripts/verify-design-coverage.mjs",
     "test:security": "node scripts/verify-security-contract.mjs",
     "test:workflow": "node scripts/verify-workflow-inventory.mjs",
-    "test:all": "npm run test:design && npm run test:security && npm run test:workflow && npm test",
+    "test:all": "npm run test:brand && npm run test:design && npm run test:security && npm run test:workflow && npm test",
     "count:lines": "node scripts/count-lines.mjs",
     "capture:runtime": "node scripts/capture-runtime.mjs",
-    "package": "npm run prepare:renderer && electron-builder --win --x64 --dir",
-    "dist": "npm run prepare:renderer && electron-builder --win squirrel --x64"
+    "capture:matrix": "node scripts/capture-matrix.mjs",
+    "package": "npm run test:brand && npm run prepare:renderer && electron-builder --win --x64 --dir",
+    "dist": "npm run test:brand && npm run prepare:renderer && electron-builder --win squirrel --x64"
   },
   "dependencies": {
     "@babel/standalone": "7.29.0",
+    "pdf-lib": "1.17.1",
     "qrcode": "1.5.4",
     "react": "18.3.1",
     "react-dom": "18.3.1"
@@ -40,6 +44,7 @@
     "productName": "Material Encryption",
     "asar": true,
     "forceCodeSigning": false,
+    "afterPack": "scripts/apply-packaged-icon.cjs",
     "files": [
       "src/**/*",
       "package.json",
@@ -50,14 +55,15 @@
       "output": "dist"
     },
     "win": {
+      "icon": "build/material-encryption.ico",
       "forceCodeSigning": false,
       "signExecutable": false,
-      "signAndEditExecutable": true
+      "signAndEditExecutable": false
     },
     "squirrelWindows": {
       "msi": false,
       "artifactName": "MaterialEncryption-Setup-${version}-${arch}.${ext}",
-      "iconUrl": "https://raw.githubusercontent.com/Ding-Ding-Projects/material-encryption/main/design/favicon.ico"
+      "iconUrl": "https://raw.githubusercontent.com/Ding-Ding-Projects/material-encryption/main/build/material-encryption.ico"
     }
   }
 }

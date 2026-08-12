@@ -1,0 +1,223 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-08-12T15:47:35.044Z",
+  "source": "packaged resources/app.asar through isolated loopback CDP on a cheap Lowlevel hidden desktop",
+  "states": [
+    {
+      "state": "volumes",
+      "expected": "Volumes",
+      "output": "C:\\Users\\cntow\\Documents\\GitHub\\material-encryption\\docs\\assets\\runtime\\material-encryption-volumes.png",
+      "width": 1440,
+      "height": 900,
+      "logo": true,
+      "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
+    },
+    {
+      "state": "favorites",
+      "expected": "Favorite Volumes",
+      "output": "C:\\Users\\cntow\\Documents\\GitHub\\material-encryption\\docs\\assets\\runtime\\material-encryption-favorites.png",
+      "width": 1440,
+      "height": 900,
+      "logo": true,
+      "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
+    },
+    {
+      "state": "create",
+      "expected": "Volume Creation Wizard",
+      "output": "C:\\Users\\cntow\\Documents\\GitHub\\material-encryption\\docs\\assets\\runtime\\material-encryption-create.png",
+      "width": 1440,
+      "height": 900,
+      "logo": true,
+      "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
+    },
+    {
+      "state": "properties",
+      "expected": "Volume Properties",
+      "output": "C:\\Users\\cntow\\Documents\\GitHub\\material-encryption\\docs\\assets\\runtime\\material-encryption-properties.png",
+      "width": 1440,
+      "height": 900,
+      "logo": true,
+      "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
+    },
+    {
+      "state": "security",
+      "expected": "Security",
+      "output": "C:\\Users\\cntow\\Documents\\GitHub\\material-encryption\\docs\\assets\\runtime\\material-encryption-security.png",
+      "width": 1440,
+      "height": 900,
+      "logo": true,
+      "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
+    },
+    {
+      "state": "tools",
+      "expected": "Performance & Tools",
+      "output": "C:\\Users\\cntow\\Documents\\GitHub\\material-encryption\\docs\\assets\\runtime\\material-encryption-tools.png",
+      "width": 1440,
+      "height": 900,
+      "logo": true,
+      "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
+    },
+    {
+      "state": "converter",
+      "expected": "File Converter",
+      "output": "C:\\Users\\cntow\\Documents\\GitHub\\material-encryption\\docs\\assets\\runtime\\material-encryption-converter.png",
+      "width": 1440,
+      "height": 900,
+      "logo": true,
+      "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
+    },
+    {
+      "state": "preferences",
+      "expected": "Preferences",
+      "output": "C:\\Users\\cntow\\Documents\\GitHub\\material-encryption\\docs\\assets\\runtime\\material-encryption-preferences.png",
+      "width": 1440,
+      "height": 900,
+      "logo": true,
+      "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
+    },
+    {
+      "state": "history",
+      "expected": "History",
+      "output": "C:\\Users\\cntow\\Documents\\GitHub\\material-encryption\\docs\\assets\\runtime\\material-encryption-history.png",
+      "width": 1440,
+      "height": 900,
+      "logo": true,
+      "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
+    },
+    {
+      "state": "locks",
+      "expected": "Locked surfaces",
+      "output": "C:\\Users\\cntow\\Documents\\GitHub\\material-encryption\\docs\\assets\\runtime\\material-encryption-locks.png",
+      "width": 1440,
+      "height": 900,
+      "logo": true,
+      "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
+    },
+    {
+      "state": "auth",
+      "expected": "Authenticator",
+      "output": "C:\\Users\\cntow\\Documents\\GitHub\\material-encryption\\docs\\assets\\runtime\\material-encryption-auth.png",
+      "width": 1440,
+      "height": 900,
+      "logo": true,
+      "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
+    },
+    {
+      "state": "support",
+      "expected": "Support Tickets",
+      "output": "C:\\Users\\cntow\\Documents\\GitHub\\material-encryption\\docs\\assets\\runtime\\material-encryption-support.png",
+      "width": 1440,
+      "height": 900,
+      "logo": true,
+      "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
+    },
+    {
+      "state": "settings",
+      "expected": "Settings",
+      "output": "C:\\Users\\cntow\\Documents\\GitHub\\material-encryption\\docs\\assets\\runtime\\material-encryption-settings.png",
+      "width": 1440,
+      "height": 900,
+      "logo": true,
+      "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
+    },
+    {
+      "state": "logo",
+      "expected": "App logo customizer",
+      "output": "C:\\Users\\cntow\\Documents\\GitHub\\material-encryption\\docs\\assets\\runtime\\material-encryption-logo.png",
+      "width": 1440,
+      "height": 900,
+      "logo": true,
+      "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
+    },
+    {
+      "state": "palette",
+      "expected": "Command palette",
+      "output": "C:\\Users\\cntow\\Documents\\GitHub\\material-encryption\\docs\\assets\\runtime\\material-encryption-palette.png",
+      "width": 1440,
+      "height": 900,
+      "logo": true,
+      "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
+    },
+    {
+      "state": "regex",
+      "expected": "Regex builder",
+      "output": "C:\\Users\\cntow\\Documents\\GitHub\\material-encryption\\docs\\assets\\runtime\\material-encryption-regex.png",
+      "width": 1440,
+      "height": 900,
+      "logo": true,
+      "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
+    },
+    {
+      "state": "appearance",
+      "expected": "Edit appearance",
+      "output": "C:\\Users\\cntow\\Documents\\GitHub\\material-encryption\\docs\\assets\\runtime\\material-encryption-appearance.png",
+      "width": 1440,
+      "height": 900,
+      "logo": true,
+      "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
+    },
+    {
+      "state": "confirm",
+      "expected": "Super confirmation",
+      "output": "C:\\Users\\cntow\\Documents\\GitHub\\material-encryption\\docs\\assets\\runtime\\material-encryption-confirm.png",
+      "width": 1440,
+      "height": 900,
+      "logo": true,
+      "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
+    },
+    {
+      "state": "menu",
+      "expected": "Exact-element context menu",
+      "output": "C:\\Users\\cntow\\Documents\\GitHub\\material-encryption\\docs\\assets\\runtime\\material-encryption-menu.png",
+      "width": 1440,
+      "height": 900,
+      "logo": true,
+      "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
+    },
+    {
+      "state": "lock-wizard",
+      "expected": "Exact-element lock wizard",
+      "output": "C:\\Users\\cntow\\Documents\\GitHub\\material-encryption\\docs\\assets\\runtime\\material-encryption-lock-wizard.png",
+      "width": 1440,
+      "height": 900,
+      "logo": true,
+      "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
+    },
+    {
+      "state": "navigator",
+      "expected": "Keyboard element navigator",
+      "output": "C:\\Users\\cntow\\Documents\\GitHub\\material-encryption\\docs\\assets\\runtime\\material-encryption-navigator.png",
+      "width": 1440,
+      "height": 900,
+      "logo": true,
+      "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
+    },
+    {
+      "state": "error",
+      "expected": "Choose a volume notification",
+      "output": "C:\\Users\\cntow\\Documents\\GitHub\\material-encryption\\docs\\assets\\runtime\\material-encryption-error.png",
+      "width": 1440,
+      "height": 900,
+      "logo": true,
+      "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
+    },
+    {
+      "state": "light",
+      "expected": "Settings · light theme",
+      "output": "C:\\Users\\cntow\\Documents\\GitHub\\material-encryption\\docs\\assets\\runtime\\material-encryption-light.png",
+      "width": 1440,
+      "height": 900,
+      "logo": true,
+      "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
+    },
+    {
+      "state": "narrow",
+      "expected": "File Converter · 390px",
+      "output": "C:\\Users\\cntow\\Documents\\GitHub\\material-encryption\\docs\\assets\\runtime\\material-encryption-narrow.png",
+      "width": 390,
+      "height": 844,
+      "logo": true,
+      "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
+    }
+  ]
+}
