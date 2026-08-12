@@ -166,7 +166,15 @@ function prfOrder(prf) {
   return [prf, ...available.filter((entry) => entry !== prf)];
 }
 
-async function openVolume({ volume, password, pim = 0, prf = 'Autodetection', useBackupHeader = false }) {
+// Same for the cipher: a container does not record which one it used in
+// plaintext, so opening it means trying each until the two header CRCs agree.
+function cipherOrder(cipher) {
+  const available = Object.values(fmt.CIPHERS).filter((entry) => entry.available).map((entry) => entry.id);
+  if (!cipher || cipher === 'Autodetection') return available;
+  return [cipher, ...available.filter((entry) => entry !== cipher)];
+}
+
+async function openVolume({ volume, password, pim = 0, prf = 'Autodetection', cipher = 'Autodetection', useBackupHeader = false }) {
   const file = assertVolumePath(volume);
   const stat = await fsp.stat(file).catch(() => null);
   if (!stat || !stat.isFile()) throw new Error('The selected container does not exist.');
@@ -175,9 +183,11 @@ async function openVolume({ volume, password, pim = 0, prf = 'Autodetection', us
     const offset = useBackupHeader ? stat.size - fmt.BACKUP_AREA_SIZE : 0;
     if (offset < 0) throw new Error('The container has no backup header area.');
     const header = await readHeaderAt(handle, offset);
-    for (const candidate of prfOrder(prf)) {
-      const opened = fmt.tryDecryptHeader({ header, password, pim, prf: candidate, cipherName: 'AES' });
-      if (opened) return { ...opened, path: file, fileSize: stat.size, usedBackupHeader: Boolean(useBackupHeader) };
+    for (const candidatePrf of prfOrder(prf)) {
+      for (const candidateCipher of cipherOrder(cipher)) {
+        const opened = fmt.tryDecryptHeader({ header, password, pim, prf: candidatePrf, cipherName: candidateCipher });
+        if (opened) return { ...opened, path: file, fileSize: stat.size, usedBackupHeader: Boolean(useBackupHeader) };
+      }
     }
     throw new Error('Incorrect password, PIM or key derivation function, or the container is not a VeraCrypt volume this build can open.');
   } finally {
@@ -255,7 +265,7 @@ async function create({ volume, password, sizeBytes, cipher = 'AES', prf = 'HMAC
     if (filesystem === 'FAT32') {
       const totalSectors = Math.floor(dataLength / fmt.DEFAULT_SECTOR_SIZE);
       for (const [sectorIndex, plaintext] of fat32Sectors(totalSectors, volumeLabel)) {
-        const ciphertext = fmt.encryptDataUnit(cipherSpec.algorithm, masterKey, sectorIndex, plaintext);
+        const ciphertext = fmt.encryptDataUnit(cipherSpec.id, masterKey, sectorIndex, plaintext);
         await handle.write(ciphertext, 0, ciphertext.length, fmt.DATA_AREA_OFFSET + sectorIndex * fmt.DEFAULT_SECTOR_SIZE);
       }
       if (onProgress) onProgress({ phase: 'filesystem', done: 1, total: 1 });
@@ -365,7 +375,7 @@ async function readSectors({ volume, password, pim, prf, sectorIndex = 0, sector
       if (offset + opened.sectorSize > opened.encryptedAreaStart + opened.encryptedAreaLength) throw new Error('That sector is past the end of the encrypted area.');
       const ciphertext = Buffer.alloc(opened.sectorSize);
       await handle.read(ciphertext, 0, opened.sectorSize, offset);
-      fmt.decryptDataUnit(opened.algorithm, opened.masterKey, unit, ciphertext).copy(out, index * opened.sectorSize);
+      fmt.decryptDataUnit(opened.cipher, opened.masterKey, unit, ciphertext).copy(out, index * opened.sectorSize);
     }
     return out;
   } finally {

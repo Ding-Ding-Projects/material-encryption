@@ -122,15 +122,31 @@ test('changing the password preserves the data area', async () => {
   }
 });
 
-test('unavailable ciphers and PRFs are reported rather than silently substituted', () => {
+test('ported ciphers are offered and unported ones are reported rather than silently substituted', () => {
   const ciphers = engine.availableCiphers();
-  const aes = ciphers.find((entry) => entry.id === 'AES');
-  assert.equal(aes.available, true);
-  const serpent = ciphers.find((entry) => entry.id === 'Serpent');
-  assert.equal(serpent.available, false);
-  assert.match(serpent.reason, /not provided/);
-  assert.throws(() => fmt.resolveCipher('Serpent'), /not provided/);
+  const byId = Object.fromEntries(ciphers.map((entry) => [entry.id, entry]));
+  assert.equal(byId.AES.available, true);
+  assert.equal(byId.Serpent.available, true, 'Serpent is ported and must be offered');
+  assert.equal(byId.Twofish.available, true, 'Twofish is ported and must be offered');
+  assert.equal(byId.Camellia.available, false);
+  assert.match(byId.Camellia.reason, /not been ported/);
+  assert.throws(() => fmt.resolveCipher('Camellia'), /not been ported/);
   assert.throws(() => fmt.resolvePrf('HMAC-Streebog'), /HMAC-SHA-512/);
+});
+
+test('a Serpent container round-trips through create, open and read', async () => {
+  const { file, cleanup } = await scratch('serpent.hc');
+  try {
+    await engine.create({ volume: file, password: 'serpent passphrase', sizeBytes: SIZE, pim: PIM, cipher: 'Serpent', volumeLabel: 'SERPENT' });
+    // Opened without naming the cipher: autodetection has to find it.
+    const info = await engine.verify({ volume: file, password: 'serpent passphrase', pim: PIM });
+    assert.equal(info.cipher, 'Serpent');
+    const boot = await engine.readSectors({ volume: file, password: 'serpent passphrase', pim: PIM, sectorIndex: 0, sectorCount: 1 });
+    assert.equal(boot.readUInt16LE(510), 0xaa55);
+    assert.equal(boot.subarray(71, 82).toString('ascii').trim(), 'SERPENT');
+  } finally {
+    await cleanup();
+  }
 });
 
 test('container sizes outside the supported range are refused', () => {

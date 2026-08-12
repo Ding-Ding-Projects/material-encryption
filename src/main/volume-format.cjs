@@ -29,6 +29,10 @@
 //   256  key field (master keys)                256   |
 
 const crypto = require('node:crypto');
+const xtsMode = require('./crypto/xts.cjs');
+const aesCipher = require('./crypto/aes.cjs');
+const serpentCipher = require('./crypto/serpent.cjs');
+const twofishCipher = require('./crypto/twofish.cjs');
 
 const HEADER_SIZE = 512;
 const SALT_SIZE = 64;
@@ -51,11 +55,11 @@ const PIM_ITERATIONS_PER_UNIT = 1000;
 // A cipher we cannot execute is reported as unavailable rather than listed as
 // if it worked.
 const CIPHERS = Object.freeze({
-  AES: { id: 'AES', label: 'AES', keyBytes: 64, algorithm: 'aes-256-xts', available: true },
-  Serpent: { id: 'Serpent', label: 'Serpent', keyBytes: 64, algorithm: null, available: false, reason: 'Serpent is not provided by this build’s crypto backend.' },
-  Twofish: { id: 'Twofish', label: 'Twofish', keyBytes: 64, algorithm: null, available: false, reason: 'Twofish is not provided by this build’s crypto backend.' },
-  Camellia: { id: 'Camellia', label: 'Camellia', keyBytes: 64, algorithm: null, available: false, reason: 'Camellia XTS is not provided by this build’s crypto backend.' },
-  Kuznyechik: { id: 'Kuznyechik', label: 'Kuznyechik', keyBytes: 64, algorithm: null, available: false, reason: 'Kuznyechik is not provided by this build’s crypto backend.' }
+  AES: { id: 'AES', label: 'AES', keyBytes: 64, algorithm: 'aes-256-xts', module: aesCipher, available: true },
+  Serpent: { id: 'Serpent', label: 'Serpent', keyBytes: 64, algorithm: null, module: serpentCipher, available: true },
+  Twofish: { id: 'Twofish', label: 'Twofish', keyBytes: 64, algorithm: null, module: twofishCipher, available: true },
+  Camellia: { id: 'Camellia', label: 'Camellia', keyBytes: 64, algorithm: null, module: null, available: false, reason: 'Camellia has not been ported yet, so this build cannot read or write a Camellia volume.' },
+  Kuznyechik: { id: 'Kuznyechik', label: 'Kuznyechik', keyBytes: 64, algorithm: null, module: null, available: false, reason: 'Kuznyechik has not been ported yet, so this build cannot read or write a Kuznyechik volume.' }
 });
 
 const PRFS = Object.freeze({
@@ -137,17 +141,28 @@ function tweak(dataUnitNumber) {
   return buffer;
 }
 
-function xts(algorithm, key, dataUnitNumber, data, encrypt) {
-  const factory = encrypt ? crypto.createCipheriv : crypto.createDecipheriv;
-  const engine = factory(algorithm, key, tweak(dataUnitNumber));
-  return Buffer.concat([engine.update(data), engine.final()]);
+// AES uses the platform's native XTS, which is hardware accelerated. The ported
+// ciphers use this project's own XTS, which is proven byte-identical to that
+// native mode in tests/crypto-ciphers.test.mjs.
+function xts(cipher, key, dataUnitNumber, data, encrypt) {
+  if (cipher.algorithm) {
+    const factory = encrypt ? crypto.createCipheriv : crypto.createDecipheriv;
+    const engine = factory(cipher.algorithm, key, tweak(dataUnitNumber));
+    return Buffer.concat([engine.update(data), engine.final()]);
+  }
+  const mode = xtsMode.createXts(cipher.module, key);
+  try {
+    return encrypt ? mode.encrypt(dataUnitNumber, data) : mode.decrypt(dataUnitNumber, data);
+  } finally {
+    mode.destroy();
+  }
 }
 
-function encryptHeaderArea(algorithm, key, plaintext) { return xts(algorithm, key, 0, plaintext, true); }
-function decryptHeaderArea(algorithm, key, ciphertext) { return xts(algorithm, key, 0, ciphertext, false); }
+function encryptHeaderArea(cipher, key, plaintext) { return xts(cipher, key, 0, plaintext, true); }
+function decryptHeaderArea(cipher, key, ciphertext) { return xts(cipher, key, 0, ciphertext, false); }
 
-function encryptDataUnit(algorithm, key, dataUnitNumber, data) { return xts(algorithm, key, dataUnitNumber, data, true); }
-function decryptDataUnit(algorithm, key, dataUnitNumber, data) { return xts(algorithm, key, dataUnitNumber, data, false); }
+function encryptDataUnit(cipher, key, dataUnitNumber, data) { return xts(resolveCipher(cipher), key, dataUnitNumber, data, true); }
+function decryptDataUnit(cipher, key, dataUnitNumber, data) { return xts(resolveCipher(cipher), key, dataUnitNumber, data, false); }
 
 // Builds the 512-byte header. `masterKey` is the key field's real content; the
 // remainder of the field is random so the ciphertext leaks no key length.
@@ -172,7 +187,7 @@ function buildHeader({ salt, headerKey, cipher, masterKey, volumeSize, encrypted
 
   const header = Buffer.alloc(HEADER_SIZE);
   salt.copy(header, 0);
-  encryptHeaderArea(cipher.algorithm, headerKey, body).copy(header, ENCRYPTED_OFFSET);
+  encryptHeaderArea(cipher, headerKey, body).copy(header, ENCRYPTED_OFFSET);
   return header;
 }
 
@@ -186,7 +201,7 @@ function tryDecryptHeader({ header, password, pim = 0, prf = 'HMAC-SHA-512', cip
   const headerKey = deriveHeaderKey({ password, salt, prf, pim, keyBytes: cipher.keyBytes });
   let body;
   try {
-    body = decryptHeaderArea(cipher.algorithm, headerKey, header.subarray(ENCRYPTED_OFFSET, HEADER_SIZE));
+    body = decryptHeaderArea(cipher, headerKey, header.subarray(ENCRYPTED_OFFSET, HEADER_SIZE));
   } catch (_) {
     return null;
   }
@@ -209,8 +224,7 @@ function tryDecryptHeader({ header, password, pim = 0, prf = 'HMAC-SHA-512', cip
     flags: body.readUInt32BE(60),
     sectorSize: body.readUInt32BE(64) || DEFAULT_SECTOR_SIZE,
     masterKey: Buffer.from(keyField.subarray(0, cipher.keyBytes)),
-    salt: Buffer.from(salt),
-    algorithm: cipher.algorithm
+    salt: Buffer.from(salt)
   };
 }
 
