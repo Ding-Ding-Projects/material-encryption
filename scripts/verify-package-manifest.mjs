@@ -19,6 +19,7 @@ assert.equal(manifest.build?.win?.signExecutable, false, 'Executable signing mus
 assert.equal(manifest.build?.win?.signAndEditExecutable, false, 'Signer-backed executable editing must stay disabled.');
 assert.equal(manifest.build?.squirrelWindows?.msi, false, 'The release contract publishes Squirrel setup and update files, not MSI.');
 assert.equal(manifest.build?.squirrelWindows?.artifactName, 'MaterialEncryption-Setup-${version}-${arch}.${ext}');
+assert.equal(manifest.build?.squirrelWindows?.remoteReleases, 'https://github.com/Ding-Ding-Projects/material-encryption', 'The release contract must use the fixed public update feed so a clean runner can produce the generated delta package.');
 assert.equal(manifest.scripts?.['dist:unsigned'], 'electron-builder --win squirrel --x64');
 assert.ok(!/test|lint/i.test(manifest.scripts['dist:unsigned']), 'The workflow packaging primitive must not run tests or lint.');
 assert.match(manifest.scripts?.dist || '', /npm run dist:unsigned/, 'The local dist command must delegate to the reviewed unsigned primitive.');

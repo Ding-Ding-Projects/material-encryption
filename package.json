@@ -1,6 +1,6 @@
 {
   "name": "material-encryption",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "A Material Design 3 desktop interface for locally installed VeraCrypt.",
   "main": "src/main/main.cjs",
   "author": "Ding-Ding Projects",
@@ -66,6 +66,7 @@
     "squirrelWindows": {
       "msi": false,
       "artifactName": "MaterialEncryption-Setup-${version}-${arch}.${ext}",
+      "remoteReleases": "https://github.com/Ding-Ding-Projects/material-encryption",
       "iconUrl": "https://raw.githubusercontent.com/Ding-Ding-Projects/material-encryption/main/build/material-encryption.ico"
     }
   }

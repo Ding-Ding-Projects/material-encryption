@@ -45,34 +45,6 @@ jobs:
         run: |
           npm run prepare:renderer
 
-      - name: Seed the previous Squirrel.Windows full package
-        id: previous
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN }}
-        run: |
-          $packageVersion = [version](node -p "require('./package.json').version")
-          if ($LASTEXITCODE -ne 0) { throw 'The current package version could not be resolved for delta generation.' }
-          $releases = gh api 'repos/${{ github.repository }}/releases?per_page=100' | ConvertFrom-Json
-          if ($LASTEXITCODE -ne 0) { throw 'Published releases could not be listed for delta generation.' }
-          $candidates = foreach ($release in $releases | Where-Object { -not $_.draft -and -not $_.prerelease }) {
-            foreach ($asset in $release.assets) {
-              if ($asset.name -match '^material-encryption-(?<version>\d+\.\d+\.\d+)-full\.nupkg$') {
-                $candidateVersion = [version]$Matches.version
-                if ($candidateVersion -lt $packageVersion) { [pscustomobject]@{ Tag = $release.tag_name; Name = $asset.name; Version = $candidateVersion } }
-              }
-            }
-          }
-          $candidate = @($candidates | Sort-Object Version -Descending | Select-Object -First 1)
-          if ($candidate.Count -ne 1) { throw 'No published older full package is available for required delta generation.' }
-          $artifactDirectory = Join-Path $PWD 'dist/squirrel-windows'
-          New-Item -ItemType Directory -Force -Path $artifactDirectory | Out-Null
-          gh release download $candidate[0].Tag --pattern $candidate[0].Name --dir $artifactDirectory
-          if ($LASTEXITCODE -ne 0) { throw 'The previous full Squirrel.Windows package could not be downloaded.' }
-          $previousPackages = @(Get-ChildItem -LiteralPath $artifactDirectory -File -Filter '*-full.nupkg')
-          if ($previousPackages.Count -ne 1) { throw "Expected exactly one previous full package; found $($previousPackages.Count)." }
-          "package=$($previousPackages[0].Name)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-
       - name: Build unsigned Squirrel.Windows artifacts
         shell: pwsh
         run: |
@@ -88,7 +60,6 @@ jobs:
           $setupName = "MaterialEncryption-Setup-$packageVersion-x64.exe"
           $fullPackageName = "material-encryption-$packageVersion-full.nupkg"
           $deltaPackageName = "material-encryption-$packageVersion-delta.nupkg"
-          $previousPackageName = '${{ steps.previous.outputs.package }}'
           $setupPath = Join-Path $artifactDirectory $setupName
           $releaseIndex = Join-Path $artifactDirectory 'RELEASES'
           $fullPackagePath = Join-Path $artifactDirectory $fullPackageName
@@ -97,12 +68,9 @@ jobs:
             if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) { throw "Required Squirrel.Windows artifact was not produced: $requiredPath" }
           }
           $unexpectedSetups = @(Get-ChildItem -LiteralPath $artifactDirectory -File -Filter '*Setup*.exe' | Where-Object Name -ne $setupName)
-          $expectedPackageNames = @($previousPackageName, $deltaPackageName, $fullPackageName)
-          $unexpectedPackages = @(Get-ChildItem -LiteralPath $artifactDirectory -File -Filter '*.nupkg' | Where-Object Name -notin $expectedPackageNames)
-          if ($unexpectedSetups.Count -ne 0 -or $unexpectedPackages.Count -ne 0) { throw 'The Squirrel.Windows output contains an unexpected setup or package name.' }
+          if ($unexpectedSetups.Count -ne 0) { throw 'The Squirrel.Windows output contains an unexpected setup name.' }
           $releaseEntries = @(Get-Content -LiteralPath $releaseIndex | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-          if ($releaseEntries.Count -ne 3) { throw "RELEASES must contain the previous full, current delta, and current full package entries; found $($releaseEntries.Count)." }
-          foreach ($packageName in $expectedPackageNames) {
+          foreach ($packageName in @($deltaPackageName, $fullPackageName)) {
             $escapedPackageName = [regex]::Escape($packageName)
             $matchingEntry = @($releaseEntries | Where-Object { $_ -match "^(?<sha>[A-Fa-f0-9]{40})\s+$escapedPackageName\s+(?<size>\d+)$" })
             if ($matchingEntry.Count -ne 1) { throw "RELEASES does not link the exact package name: $packageName" }
@@ -147,7 +115,7 @@ jobs:
             releases = 'RELEASES'
             full_package = $fullPackageName
             delta_package = $deltaPackageName
-            delta_base_package = $previousPackageName
+            delta_source = 'https://github.com/Ding-Ding-Projects/material-encryption'
             dim_sum_photo = $dimSumName
             dim_sum_source = $dimSumUrl
             signature = $signature.Status.ToString()

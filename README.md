@@ -10,7 +10,7 @@ Material Encryption is a Material Design 3 Windows desktop interface for a separ
 > Material Encryption is independent from VeraCrypt. It never bundles VeraCrypt, never implements encryption, and never puts a volume password on a process command line. VeraCrypt must be installed separately.
 
 > [!TIP]
-> Package **0.1.9** has final local evidence: `npm test` **55/55** and a green `npm run test:all`. The `2026-08-12` packaged capture manifest covers all 14 destinations in 36 states: 24 packaged UI interactions, one actual bridge/runtime observation (healthy local Ollama `v0.32.9`), and 11 explicitly labelled seeded visual fixtures. Seeded fixtures are renderer coverage only; they do not prove live conversion, model, download, chat, harness, restore, or service behaviour.
+> Package **0.1.10** has final local evidence: `npm test` **55/55** and a green `npm run test:all`. The `2026-08-12` packaged capture manifest covers all 14 destinations in 36 states: 24 packaged UI interactions, one actual bridge/runtime observation (healthy local Ollama `v0.32.9`), and 11 explicitly labelled seeded visual fixtures. Seeded fixtures are renderer coverage only; they do not prove live conversion, model, download, chat, harness, restore, or service behaviour.
 
 ## Install and build
 

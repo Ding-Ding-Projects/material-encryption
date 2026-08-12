@@ -15,7 +15,6 @@ const jobPreamble = workflow.slice(workflow.indexOf('jobs:'), workflow.indexOf('
 assert.ok(!jobPreamble.includes('GH_TOKEN:'), 'Release credentials must not exist at job scope where electron-builder can auto-publish.');
 const publishStep = workflow.slice(workflow.indexOf('- name: Publish one immutable release for this run'), workflow.indexOf('- name: Collect safe build outputs'));
 const buildStep = workflow.slice(workflow.indexOf('- name: Build unsigned Squirrel.Windows artifacts'), workflow.indexOf('- name: Collect and verify release evidence'));
-const previousStep = workflow.slice(workflow.indexOf('- name: Seed the previous Squirrel.Windows full package'), workflow.indexOf('- name: Build unsigned Squirrel.Windows artifacts'));
 const evidenceStep = workflow.slice(workflow.indexOf('- name: Collect and verify release evidence'), workflow.indexOf('- name: Count project lines'));
 assert.ok(publishStep.includes('GH_TOKEN:'), 'Release credentials must be scoped to the explicit publication step.');
 assert.ok(publishStep.includes('--draft'), 'Publication must start from a private draft.');
@@ -27,9 +26,7 @@ assert.doesNotMatch(workflow, /^\s+(?:npm test|npm run test(?::[^\s]+)?|npm run 
 assert.ok(evidenceStep.includes('$setupName = "MaterialEncryption-Setup-$packageVersion-x64.exe"'), 'Collector must require the exact setup name.');
 assert.ok(evidenceStep.includes('$fullPackageName = "material-encryption-$packageVersion-full.nupkg"'), 'Collector must require the exact full package name.');
 assert.ok(evidenceStep.includes('$deltaPackageName = "material-encryption-$packageVersion-delta.nupkg"'), 'Collector must require the exact generated delta package name.');
-assert.ok(previousStep.includes('$candidateVersion -lt $packageVersion'), 'Delta generation must reject same-version and newer base packages.');
-assert.ok(previousStep.includes('gh release download $candidate[0].Tag --pattern $candidate[0].Name'), 'Delta generation must seed an exact older published full package.');
-assert.ok(evidenceStep.includes('foreach ($packageName in $expectedPackageNames)'), 'Collector must validate every RELEASES package entry.');
+assert.ok(evidenceStep.includes('foreach ($packageName in @($deltaPackageName, $fullPackageName))'), 'Collector must validate the current full and delta RELEASES entries.');
 assert.ok(evidenceStep.includes('Get-FileHash -Algorithm SHA1'), 'Collector must verify package bytes against RELEASES integrity metadata.');
 assert.ok(evidenceStep.includes("'build-evidence.json'"), 'Collector must stage build evidence.');
 assert.ok(evidenceStep.includes("'hk-dish-0001-classic-har-gow.png'"), 'Collector must stage the selected public catalog dim-sum photo.');
