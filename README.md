@@ -9,8 +9,8 @@ Material Encryption is a Material Design 3 Windows desktop interface for a separ
 > [!IMPORTANT]
 > Material Encryption is independent from VeraCrypt. It never bundles VeraCrypt, never implements encryption, and never puts a volume password on a process command line. VeraCrypt must be installed separately.
 
-> [!NOTE]
-> The 14-destination application, expanded converter, and Ollama Studio described below are currently unreleased. The source test inventory contains 42 Node tests, but the final complete local suite, packaged runtime captures, installer, release, and hosted-site verification must be refreshed at the final candidate commit.
+> [!TIP]
+> Package **0.1.9** has final local evidence: `npm test` **55/55** and a green `npm run test:all`. The `2026-08-12` packaged capture manifest covers all 14 destinations in 36 states: 24 packaged UI interactions, one actual bridge/runtime observation (healthy local Ollama `v0.32.9`), and 11 explicitly labelled seeded visual fixtures. Seeded fixtures are renderer coverage only; they do not prove live conversion, model, download, chat, harness, restore, or service behaviour.
 
 ## Install and build
 
@@ -73,7 +73,7 @@ Ollama Studio uses the fixed local Ollama endpoint and an allowlist of documente
 
 Every variant receives a conservative **Runs well**, **Runs with limits**, **Unlikely**, or **Unknown** result. The result shows the available evidence—model bytes and context where reported, RAM, available RAM, GPU/VRAM inventory, and free disk—and remains **Unknown** rather than guessing when decisive metadata is unavailable.
 
-The Download Cart is a free bounded-parallel batch pull surface, not a storefront. It preflights disk, reports per-model progress and partial outcomes, and supports cancellation and retry. Chat uses Ollama's streaming response format with cancellation, a system prompt, validated generation parameters, conversation state, and export guidance. The current IPC returns the accumulated response when the operation completes; attachments remain disabled unless both the selected model and the application bridge support them.
+The Download Cart is a free bounded-parallel batch pull surface, not a storefront. It preflights disk, reports per-model progress and partial outcomes, and supports cancellation and retry. Chat uses a bounded response transport with cancellation, a system prompt, validated generation parameters, conversation state, and export guidance; the current IPC returns one validated complete response when the operation finishes. Attachments remain disabled unless both the selected model and the application bridge support them.
 
 Harness launch is limited to discovered or explicitly reviewed profiles. The application previews the executable, arguments, and configuration changes, snapshots allowlisted configuration files, restores automatically after a failed launch, and offers explicit snapshot restore. It never exposes an arbitrary shell box.
 
@@ -114,9 +114,9 @@ See [Security architecture](docs/security/README.md).
 </details>
 
 <details>
-<summary>Existing packaged-runtime captures</summary>
+<summary>Current packaged-runtime captures</summary>
 
-These files exist under `docs/assets/runtime` and document the previous 24-state packaged baseline. They do not yet prove the newly added Ollama Studio destination or the final current candidate.
+The current [capture manifest](docs/assets/runtime/capture-manifest.json) is dated `2026-08-12` and contains 36 states covering all 14 destinations. It records 24 packaged UI interactions, one actual bridge/runtime observation, and 11 seeded visual fixtures. The fixtures are intentionally labelled and do not prove live conversion, model catalog/download, chat, harness, restore, or Ollama-service behaviour.
 
 ### Primary surfaces
 
@@ -125,6 +125,12 @@ These files exist under `docs/assets/runtime` and document the previous 24-state
 ![Material Encryption app logo customizer with shipped treatments, local upload, image fit, background, generated sizes, and reset](docs/assets/runtime/material-encryption-logo.png)
 
 ![Material Encryption local File Converter with source queue, adapter capabilities, target and output controls, preview, and loss disclosure](docs/assets/runtime/material-encryption-converter.png)
+
+![Material Encryption conversion format catalog showing bundled and unavailable adapters; seeded visual fixture, not live conversion proof](docs/assets/runtime/material-encryption-converter-catalog.png)
+
+![Material Encryption PDF tools showing inspect, split, merge, extract, reorder, rotate, and metadata actions; seeded visual fixture, not live PDF execution proof](docs/assets/runtime/material-encryption-pdf-tools.png)
+
+![Material Encryption bulk conversion queue with queued, running, finished, failed, and cancelled rows; seeded visual fixture, not live queue proof](docs/assets/runtime/material-encryption-converter-bulk-queue.png)
 
 <details>
 <summary>Existing destination captures</summary>
@@ -140,6 +146,20 @@ These files exist under `docs/assets/runtime` and document the previous 24-state
 ![Authenticator](docs/assets/runtime/material-encryption-auth.png)
 ![Support Tickets](docs/assets/runtime/material-encryption-support.png)
 ![Settings](docs/assets/runtime/material-encryption-settings.png)
+
+![Material Encryption Ollama Studio with a healthy local runtime reported as version 0.32.9; actual packaged bridge/runtime observation](docs/assets/runtime/material-encryption-ollama-offline.png)
+
+![Material Encryption model catalog with fixture variants; seeded visual fixture, not live catalog proof](docs/assets/runtime/material-encryption-model-catalog.png)
+
+![Material Encryption PC-fit cards with fixture evidence and conservative verdicts; seeded visual fixture, not live hardware/model proof](docs/assets/runtime/material-encryption-model-pc-fit.png)
+
+![Material Encryption Download Cart with storage preflight and per-model outcomes; seeded visual fixture, not live download proof](docs/assets/runtime/material-encryption-download-cart.png)
+
+![Material Encryption Conversations view with an explicitly seeded transcript; seeded visual fixture, not live chat proof](docs/assets/runtime/material-encryption-chat.png)
+
+![Material Encryption reviewed harness profiles and capability states; seeded visual fixture, not live harness proof](docs/assets/runtime/material-encryption-harnesses.png)
+
+![Material Encryption snapshot and one-click restore status; seeded visual fixture, not live restore proof](docs/assets/runtime/material-encryption-restore.png)
 
 </details>
 
@@ -159,7 +179,7 @@ These files exist under `docs/assets/runtime` and document the previous 24-state
 
 </details>
 
-The existing [capture manifest](docs/assets/runtime/capture-manifest.json) records 24 states. A new Ollama Studio capture and a refreshed complete matrix remain required before the current candidate can claim packaged-runtime proof.
+The manifest is the evidence boundary: the actual `0.32.9` Ollama observation is live local-runtime evidence; the other Ollama, converter, queue, PDF, chat, harness, and restore images marked as seeded fixtures are visual coverage only.
 
 </details>
 

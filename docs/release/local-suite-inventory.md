@@ -9,7 +9,7 @@ Every command below belongs in the final release-shutdown pass. The evidence col
 | Renderer and process security | `npm run test:security` | CSP, isolation, local assets, and secret-safe invocation contract |
 | Workflow bootstrap inventory | `npm run test:workflow` | Release job and explicit dependency inventory |
 | Package manifest | `npm run test:package` | Version newer than `0.1.8`, lockfile parity, unsigned Squirrel settings, and packaging-only workflow primitive |
-| Node unit suite | `npm test` | 42 declared tests across six files; final verdict pending integration run |
+| Node unit suite | `npm test` | 55/55 passing tests across eight files |
 | Complete source suite | `npm run test:all` | Runs brand, design, security, workflow, and Node test commands in sequence |
 | Line evidence | `npm run count:lines` | Committed counter only; publish only the table produced at the release commit |
 | Unpacked package | `npm run package` | Real packaged `resources/app.asar` from the candidate commit |
@@ -26,14 +26,15 @@ Every command below belongs in the final release-shutdown pass. The evidence col
 | `tests/file-converter.test.mjs` | 10 | Detection, adapters, byte bounds, destinations, capabilities, and partial batches |
 | `tests/converter-bridge-contract.test.mjs` | 5 | Preload/main queue and PDF seams, stored-state validation, registry categories, and plan bounds |
 | `tests/pdf-tools.test.mjs` | 10 | Bundled/offline registry, all PDF operations, reopened validation, atomic writes, persistent queue, and folder rules |
-| `tests/ollama-manager.test.mjs` | 11 | Loopback API, streams, cancellation, cart, catalog pagination/cache, PC fit, harness rollback/restore, and bounded history metadata |
-| **Total** | **42** | Source inventory only until `npm test` completes at the final commit |
+| `tests/ollama-manager.test.mjs` | 13 | Loopback API, bounded complete responses, cancellation, cart, catalog pagination/cache, PC fit, harness rollback/restore, and bounded history metadata |
+| `tests/ollama-bridge-contract.test.mjs` | 5 | Ollama bridge operation identifiers, cancellation, and complete-response contract |
+| **Total** | **55** | `npm test` verified 55/55; `npm run test:all` is green |
 
 ## Runtime evidence requirements
 
 The runtime matrix must use the approved hidden-desktop path, preflight exactly one packaged renderer CDP page, reload between states, assert semantic headings, verify the loaded logo, prove the light computed role, and reject horizontal page overflow at 390 × 844.
 
-The checked-in historical manifest contains 24 states from the previous 13-destination baseline. It has no Ollama Studio record. Do not count it as final current proof; add and inspect a genuine packaged Ollama Studio capture and refresh any surface changed by the candidate.
+The checked-in manifest dated `2026-08-12` contains 36 states across all 14 destinations: 24 packaged UI interactions, one actual bridge/runtime observation (healthy local Ollama `v0.32.9`), and 11 seeded visual fixtures. Fixtures are clearly labelled and must not be counted as live conversion, model, download, chat, harness, restore, or Ollama-service proof.
 
 ## Suggested articles
 

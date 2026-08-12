@@ -160,7 +160,7 @@
     const render = () => {
       const query = layer.querySelector('.query').value; const useRegex = layer.querySelector('.regex-mode').checked;
       let predicate;
-      try { const regex = useRegex ? new RegExp(layer.querySelector('.regex-pattern').value, layer.querySelector('.regex-flags').value.replace(/g/g, '')) : null; predicate = (item) => useRegex ? regex.test(item.label) : item.label.toLowerCase().includes(query.toLowerCase()); layer.querySelector('.regex-pattern').setCustomValidity(''); }
+      try { const regex = useRegex ? new RegExp(layer.querySelector('.regex-pattern').value, layer.querySelector('.regex-flags').value.replace(/g/g, '')) : null; predicate = (item) => { const label = item.targetLabel || item.label || ''; return useRegex ? regex.test(label) : label.toLowerCase().includes(query.toLowerCase()); }; layer.querySelector('.regex-pattern').setCustomValidity(''); }
       catch (error) { layer.querySelector('.regex-pattern').setCustomValidity(error.message); predicate = () => false; }
       const matches = elements.map(identify).filter(predicate).slice(0, 250); const actions = layer.querySelector('.actions'); actions.replaceChildren();
       for (const info of matches) { const button = document.createElement('button'); button.className = 'toy-menu-action'; button.textContent = info.targetLabel; button.addEventListener('click', () => openElementMenu(info.element, { x: 24, y: 24 })); actions.appendChild(button); }
@@ -245,6 +245,12 @@
   window.addEventListener('material-encryption-lock-target', (event) => {
     const element = document.querySelector(`[data-toy-lock-id="${CSS.escape(event.detail.targetId)}"]`) || document.querySelector('main');
     openLockWizard({ targetId: event.detail.targetId, targetLabel: event.detail.targetLabel, element });
+  });
+
+  window.addEventListener('material-encryption-element-menu', (event) => {
+    const targetId = typeof event.detail?.targetId === 'string' ? event.detail.targetId : '';
+    const element = targetId ? document.querySelector(`[data-toy-lock-id="${CSS.escape(targetId)}"]`) : null;
+    openElementMenu(element || document.querySelector('main'), { x: 24, y: 24 });
   });
 
   new MutationObserver(decorate).observe(document.body, { childList: true, subtree: true });

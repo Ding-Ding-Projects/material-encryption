@@ -20,9 +20,11 @@ The current source adds:
 - a persistent resumable conversion queue with bounded worker concurrency;
 - official Ollama model/tag catalog pagination and offline cache;
 - evidence-based PC-fit results, free batch downloads, chat, and reviewed harness launch/restore;
-- a total inventory of 42 Node tests.
+- package version `0.1.9`;
+- 55/55 passing `npm test` tests and a green `npm run test:all`;
+- a dated 36-state packaged capture manifest covering all 14 destinations: 24 packaged UI interactions, one actual healthy local Ollama `v0.32.9` bridge/runtime observation, and 11 seeded visual fixtures. Fixtures are renderer-only and do not prove live conversion, model, download, chat, harness, restore, or Ollama-service behaviour.
 
-These statements describe the source tree. They do not assert a final passing suite, current packaged capture matrix, current installer, new release, or current hosted-site deployment. The historical 24-state capture manifest lacks Ollama Studio and must be replaced or supplemented during the final release pass.
+These statements describe the current local evidence. They do not assert a current installer, new release, remote CI result, or hosted-site deployment.
 
 ## Release sequence
 

@@ -1,7 +1,13 @@
 {
-  "schemaVersion": 1,
-  "capturedAt": "2026-08-12T15:47:35.044Z",
+  "schemaVersion": 2,
+  "capturedAt": "2026-08-12T17:27:46.311Z",
   "source": "packaged resources/app.asar through isolated loopback CDP on a cheap Lowlevel hidden desktop",
+  "stateCount": 36,
+  "baselineStateCount": 24,
+  "seededVisualFixtureCount": 11,
+  "packagedRuntimeUiCount": 24,
+  "actualBridgeRuntimeObservationCount": 1,
+  "evidenceBoundary": "Seeded visual fixtures exercise deterministic renderer states only and are not live file, model, download, chat, harness, restore, or Ollama-service proof. ollama-offline remains an actual packaged bridge/runtime observation.",
   "states": [
     {
       "state": "volumes",
@@ -10,6 +16,16 @@
       "width": 1440,
       "height": 900,
       "logo": true,
+      "horizontalOverflow": false,
+      "headings": [
+        "Volumes",
+        "Volume"
+      ],
+      "markers": [],
+      "evidenceKind": "packaged-runtime-ui",
+      "evidenceLabel": "Real packaged renderer UI interaction; no claim about external files or services.",
+      "fixtureSchemaVersion": null,
+      "fixtureId": null,
       "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
     },
     {
@@ -19,6 +35,15 @@
       "width": 1440,
       "height": 900,
       "logo": true,
+      "horizontalOverflow": false,
+      "headings": [
+        "Favorite Volumes"
+      ],
+      "markers": [],
+      "evidenceKind": "packaged-runtime-ui",
+      "evidenceLabel": "Real packaged renderer UI interaction; no claim about external files or services.",
+      "fixtureSchemaVersion": null,
+      "fixtureId": null,
       "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
     },
     {
@@ -28,6 +53,16 @@
       "width": 1440,
       "height": 900,
       "logo": true,
+      "horizontalOverflow": false,
+      "headings": [
+        "Volume Creation Wizard",
+        "Encryption Options"
+      ],
+      "markers": [],
+      "evidenceKind": "packaged-runtime-ui",
+      "evidenceLabel": "Real packaged renderer UI interaction; no claim about external files or services.",
+      "fixtureSchemaVersion": null,
+      "fixtureId": null,
       "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
     },
     {
@@ -37,6 +72,15 @@
       "width": 1440,
       "height": 900,
       "logo": true,
+      "horizontalOverflow": false,
+      "headings": [
+        "Volume Properties"
+      ],
+      "markers": [],
+      "evidenceKind": "packaged-runtime-ui",
+      "evidenceLabel": "Real packaged renderer UI interaction; no claim about external files or services.",
+      "fixtureSchemaVersion": null,
+      "fixtureId": null,
       "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
     },
     {
@@ -46,6 +90,18 @@
       "width": 1440,
       "height": 900,
       "logo": true,
+      "horizontalOverflow": false,
+      "headings": [
+        "Security",
+        "Change Password or Keyfiles",
+        "System Encryption Settings",
+        "System-Wide Hot Keys"
+      ],
+      "markers": [],
+      "evidenceKind": "packaged-runtime-ui",
+      "evidenceLabel": "Real packaged renderer UI interaction; no claim about external files or services.",
+      "fixtureSchemaVersion": null,
+      "fixtureId": null,
       "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
     },
     {
@@ -55,6 +111,18 @@
       "width": 1440,
       "height": 900,
       "logo": true,
+      "horizontalOverflow": false,
+      "headings": [
+        "Performance & Tools",
+        "Performance Options",
+        "Benchmark",
+        "Traveler Disk Setup"
+      ],
+      "markers": [],
+      "evidenceKind": "packaged-runtime-ui",
+      "evidenceLabel": "Real packaged renderer UI interaction; no claim about external files or services.",
+      "fixtureSchemaVersion": null,
+      "fixtureId": null,
       "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
     },
     {
@@ -64,6 +132,20 @@
       "width": 1440,
       "height": 900,
       "logo": true,
+      "horizontalOverflow": false,
+      "headings": [
+        "File Converter",
+        "Source files",
+        "Conversion format catalog",
+        "PDF Tools",
+        "Adapter capabilities",
+        "Preview"
+      ],
+      "markers": [],
+      "evidenceKind": "packaged-runtime-ui",
+      "evidenceLabel": "Real packaged renderer UI interaction; no claim about external files or services.",
+      "fixtureSchemaVersion": null,
+      "fixtureId": null,
       "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
     },
     {
@@ -73,6 +155,17 @@
       "width": 1440,
       "height": 900,
       "logo": true,
+      "horizontalOverflow": false,
+      "headings": [
+        "Preferences",
+        "Default Mount Options",
+        "Windows"
+      ],
+      "markers": [],
+      "evidenceKind": "packaged-runtime-ui",
+      "evidenceLabel": "Real packaged renderer UI interaction; no claim about external files or services.",
+      "fixtureSchemaVersion": null,
+      "fixtureId": null,
       "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
     },
     {
@@ -82,6 +175,15 @@
       "width": 1440,
       "height": 900,
       "logo": true,
+      "horizontalOverflow": false,
+      "headings": [
+        "History"
+      ],
+      "markers": [],
+      "evidenceKind": "packaged-runtime-ui",
+      "evidenceLabel": "Real packaged renderer UI interaction; no claim about external files or services.",
+      "fixtureSchemaVersion": null,
+      "fixtureId": null,
       "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
     },
     {
@@ -91,6 +193,16 @@
       "width": 1440,
       "height": 900,
       "logo": true,
+      "horizontalOverflow": false,
+      "headings": [
+        "Locked surfaces",
+        "Forgotten a password or lost an authenticator?"
+      ],
+      "markers": [],
+      "evidenceKind": "packaged-runtime-ui",
+      "evidenceLabel": "Real packaged renderer UI interaction; no claim about external files or services.",
+      "fixtureSchemaVersion": null,
+      "fixtureId": null,
       "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
     },
     {
@@ -100,6 +212,16 @@
       "width": 1440,
       "height": 900,
       "logo": true,
+      "horizontalOverflow": false,
+      "headings": [
+        "Authenticator",
+        "Register a secret"
+      ],
+      "markers": [],
+      "evidenceKind": "packaged-runtime-ui",
+      "evidenceLabel": "Real packaged renderer UI interaction; no claim about external files or services.",
+      "fixtureSchemaVersion": null,
+      "fixtureId": null,
       "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
     },
     {
@@ -109,6 +231,17 @@
       "width": 1440,
       "height": 900,
       "logo": true,
+      "horizontalOverflow": false,
+      "headings": [
+        "Support Tickets",
+        "Open a ticket",
+        "Resolution"
+      ],
+      "markers": [],
+      "evidenceKind": "packaged-runtime-ui",
+      "evidenceLabel": "Real packaged renderer UI interaction; no claim about external files or services.",
+      "fixtureSchemaVersion": null,
+      "fixtureId": null,
       "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
     },
     {
@@ -118,6 +251,16 @@
       "width": 1440,
       "height": 900,
       "logo": true,
+      "horizontalOverflow": false,
+      "headings": [
+        "Settings",
+        "Appearance & language"
+      ],
+      "markers": [],
+      "evidenceKind": "packaged-runtime-ui",
+      "evidenceLabel": "Real packaged renderer UI interaction; no claim about external files or services.",
+      "fixtureSchemaVersion": null,
+      "fixtureId": null,
       "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
     },
     {
@@ -127,6 +270,19 @@
       "width": 1440,
       "height": 900,
       "logo": true,
+      "horizontalOverflow": false,
+      "headings": [
+        "Settings",
+        "App logo customizer",
+        "Logo status"
+      ],
+      "markers": [
+        "App logo customizer"
+      ],
+      "evidenceKind": "packaged-runtime-ui",
+      "evidenceLabel": "Real packaged renderer UI interaction; no claim about external files or services.",
+      "fixtureSchemaVersion": null,
+      "fixtureId": null,
       "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
     },
     {
@@ -136,6 +292,18 @@
       "width": 1440,
       "height": 900,
       "logo": true,
+      "horizontalOverflow": false,
+      "headings": [
+        "Volumes",
+        "Volume"
+      ],
+      "markers": [
+        "Ollama Studio — local runtime onboarding"
+      ],
+      "evidenceKind": "packaged-runtime-ui",
+      "evidenceLabel": "Real packaged renderer UI interaction; no claim about external files or services.",
+      "fixtureSchemaVersion": null,
+      "fixtureId": null,
       "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
     },
     {
@@ -145,6 +313,19 @@
       "width": 1440,
       "height": 900,
       "logo": true,
+      "horizontalOverflow": false,
+      "headings": [
+        "Volumes",
+        "Volume",
+        "Regex builder"
+      ],
+      "markers": [
+        "Regex builder"
+      ],
+      "evidenceKind": "packaged-runtime-ui",
+      "evidenceLabel": "Real packaged renderer UI interaction; no claim about external files or services.",
+      "fixtureSchemaVersion": null,
+      "fixtureId": null,
       "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
     },
     {
@@ -154,6 +335,19 @@
       "width": 1440,
       "height": 900,
       "logo": true,
+      "horizontalOverflow": false,
+      "headings": [
+        "Volumes",
+        "Volume",
+        "Edit appearance"
+      ],
+      "markers": [
+        "Edit appearance"
+      ],
+      "evidenceKind": "packaged-runtime-ui",
+      "evidenceLabel": "Real packaged renderer UI interaction; no claim about external files or services.",
+      "fixtureSchemaVersion": null,
+      "fixtureId": null,
       "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
     },
     {
@@ -163,6 +357,19 @@
       "width": 1440,
       "height": 900,
       "logo": true,
+      "horizontalOverflow": false,
+      "headings": [
+        "Volumes",
+        "Volume",
+        "Wipe password cache"
+      ],
+      "markers": [
+        "Wipe password cache"
+      ],
+      "evidenceKind": "packaged-runtime-ui",
+      "evidenceLabel": "Real packaged renderer UI interaction; no claim about external files or services.",
+      "fixtureSchemaVersion": null,
+      "fixtureId": null,
       "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
     },
     {
@@ -172,6 +379,18 @@
       "width": 1440,
       "height": 900,
       "logo": true,
+      "horizontalOverflow": false,
+      "headings": [
+        "Volumes",
+        "Volume"
+      ],
+      "markers": [
+        "Lock this element"
+      ],
+      "evidenceKind": "packaged-runtime-ui",
+      "evidenceLabel": "Real packaged renderer UI interaction; no claim about external files or services.",
+      "fixtureSchemaVersion": null,
+      "fixtureId": null,
       "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
     },
     {
@@ -181,6 +400,19 @@
       "width": 1440,
       "height": 900,
       "logo": true,
+      "horizontalOverflow": false,
+      "headings": [
+        "Volumes",
+        "Volume",
+        "h1 · Volumes"
+      ],
+      "markers": [
+        "LOCK WIZARD · STEP 1 OF 4"
+      ],
+      "evidenceKind": "packaged-runtime-ui",
+      "evidenceLabel": "Real packaged renderer UI interaction; no claim about external files or services.",
+      "fixtureSchemaVersion": null,
+      "fixtureId": null,
       "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
     },
     {
@@ -190,6 +422,19 @@
       "width": 1440,
       "height": 900,
       "logo": true,
+      "horizontalOverflow": false,
+      "headings": [
+        "Volumes",
+        "Volume"
+      ],
+      "markers": [
+        "KEYBOARD ELEMENT NAVIGATOR",
+        "Choose an exact rendered element"
+      ],
+      "evidenceKind": "packaged-runtime-ui",
+      "evidenceLabel": "Real packaged renderer UI interaction; no claim about external files or services.",
+      "fixtureSchemaVersion": null,
+      "fixtureId": null,
       "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
     },
     {
@@ -199,6 +444,19 @@
       "width": 1440,
       "height": 900,
       "logo": true,
+      "horizontalOverflow": false,
+      "headings": [
+        "Volumes",
+        "Volume"
+      ],
+      "markers": [
+        "Choose a volume",
+        "Select a volume file or device before opening VeraCrypt."
+      ],
+      "evidenceKind": "packaged-runtime-ui",
+      "evidenceLabel": "Real packaged renderer UI interaction; no claim about external files or services.",
+      "fixtureSchemaVersion": null,
+      "fixtureId": null,
       "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
     },
     {
@@ -208,6 +466,18 @@
       "width": 1440,
       "height": 900,
       "logo": true,
+      "horizontalOverflow": false,
+      "headings": [
+        "Settings",
+        "Appearance & language"
+      ],
+      "markers": [
+        "Appearance & language"
+      ],
+      "evidenceKind": "packaged-runtime-ui",
+      "evidenceLabel": "Real packaged renderer UI interaction; no claim about external files or services.",
+      "fixtureSchemaVersion": null,
+      "fixtureId": null,
       "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
     },
     {
@@ -217,6 +487,380 @@
       "width": 390,
       "height": 844,
       "logo": true,
+      "horizontalOverflow": false,
+      "headings": [
+        "File Converter",
+        "Source files",
+        "Conversion format catalog",
+        "PDF Tools",
+        "Adapter capabilities",
+        "Preview"
+      ],
+      "markers": [
+        "File Converter"
+      ],
+      "evidenceKind": "packaged-runtime-ui",
+      "evidenceLabel": "Real packaged renderer UI interaction; no claim about external files or services.",
+      "fixtureSchemaVersion": null,
+      "fixtureId": null,
+      "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
+    },
+    {
+      "state": "ollama-offline",
+      "expected": "Ollama local runtime observation",
+      "output": "C:\\Users\\cntow\\Documents\\GitHub\\material-encryption\\docs\\assets\\runtime\\material-encryption-ollama-offline.png",
+      "width": 1440,
+      "height": 900,
+      "logo": true,
+      "horizontalOverflow": false,
+      "headings": [
+        "Ollama Studio",
+        "Guided runtime setup",
+        "Local runtime facts",
+        "Model recommendation wizard",
+        "Troubleshooter"
+      ],
+      "markers": [
+        "Local runtime detected",
+        "Local runtime facts",
+        "0.32.9"
+      ],
+      "evidenceKind": "actual-bridge-runtime-observation",
+      "evidenceLabel": "Actual packaged local-runtime observation.",
+      "fixtureSchemaVersion": null,
+      "fixtureId": null,
+      "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
+    },
+    {
+      "state": "converter-catalog",
+      "expected": "Conversion format catalog",
+      "output": "C:\\Users\\cntow\\Documents\\GitHub\\material-encryption\\docs\\assets\\runtime\\material-encryption-converter-catalog.png",
+      "width": 1440,
+      "height": 900,
+      "logo": true,
+      "horizontalOverflow": false,
+      "headings": [
+        "File Converter",
+        "Source files",
+        "Conversion format catalog",
+        "PDF Tools",
+        "Adapter capabilities",
+        "Preview"
+      ],
+      "markers": [
+        "Documents/PDF",
+        "PDF",
+        "Available",
+        "Word document",
+        "Unavailable",
+        "document-adapter",
+        "Seeded visual fixture — not live service proof"
+      ],
+      "evidenceKind": "seeded-visual-fixture",
+      "evidenceLabel": "Seeded visual fixture — not live service proof",
+      "fixtureSchemaVersion": 1,
+      "fixtureId": "converter-catalog",
+      "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
+    },
+    {
+      "state": "pdf-tools",
+      "expected": "PDF Tools",
+      "output": "C:\\Users\\cntow\\Documents\\GitHub\\material-encryption\\docs\\assets\\runtime\\material-encryption-pdf-tools.png",
+      "width": 1440,
+      "height": 900,
+      "logo": true,
+      "horizontalOverflow": false,
+      "headings": [
+        "File Converter",
+        "Source files",
+        "Conversion format catalog",
+        "PDF Tools",
+        "Adapter capabilities",
+        "Preview"
+      ],
+      "markers": [
+        "Inspect",
+        "Split",
+        "Merge",
+        "Extract pages",
+        "Reorder",
+        "Rotate",
+        "Edit metadata",
+        "PDF rotate plan ready",
+        "Seeded visual fixture — not live service proof"
+      ],
+      "evidenceKind": "seeded-visual-fixture",
+      "evidenceLabel": "Seeded visual fixture — not live service proof",
+      "fixtureSchemaVersion": 1,
+      "fixtureId": "pdf-tools",
+      "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
+    },
+    {
+      "state": "converter-bulk-queue",
+      "expected": "Source files",
+      "output": "C:\\Users\\cntow\\Documents\\GitHub\\material-encryption\\docs\\assets\\runtime\\material-encryption-converter-bulk-queue.png",
+      "width": 1440,
+      "height": 900,
+      "logo": true,
+      "horizontalOverflow": false,
+      "headings": [
+        "File Converter",
+        "Source files",
+        "Conversion format catalog",
+        "PDF Tools",
+        "Adapter capabilities",
+        "Preview"
+      ],
+      "markers": [
+        "5 queued",
+        "queued-report.pdf",
+        "running-notes.txt",
+        "finished-guide.txt",
+        "failed-archive.zip",
+        "cancelled-video.mp4",
+        "Seeded visual fixture — not live service proof"
+      ],
+      "evidenceKind": "seeded-visual-fixture",
+      "evidenceLabel": "Seeded visual fixture — not live service proof",
+      "fixtureSchemaVersion": 1,
+      "fixtureId": "converter-bulk-queue",
+      "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
+    },
+    {
+      "state": "converter-recovery",
+      "expected": "Source files",
+      "output": "C:\\Users\\cntow\\Documents\\GitHub\\material-encryption\\docs\\assets\\runtime\\material-encryption-converter-recovery.png",
+      "width": 1440,
+      "height": 900,
+      "logo": true,
+      "horizontalOverflow": false,
+      "headings": [
+        "File Converter",
+        "Source files",
+        "Conversion format catalog",
+        "PDF Tools",
+        "Adapter capabilities",
+        "Preview"
+      ],
+      "markers": [
+        "Retry failed",
+        "Export outcomes",
+        "failed-archive.zip",
+        "cancelled-video.mp4",
+        "Restart recovery fixture",
+        "Seeded visual fixture — not live service proof"
+      ],
+      "evidenceKind": "seeded-visual-fixture",
+      "evidenceLabel": "Seeded visual fixture — not live service proof",
+      "fixtureSchemaVersion": 1,
+      "fixtureId": "converter-recovery",
+      "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
+    },
+    {
+      "state": "ollama-runtime",
+      "expected": "Guided runtime setup",
+      "output": "C:\\Users\\cntow\\Documents\\GitHub\\material-encryption\\docs\\assets\\runtime\\material-encryption-ollama-runtime.png",
+      "width": 1440,
+      "height": 900,
+      "logo": true,
+      "horizontalOverflow": false,
+      "headings": [
+        "Ollama Studio",
+        "Guided runtime setup",
+        "Local runtime facts",
+        "Model recommendation wizard",
+        "Troubleshooter"
+      ],
+      "markers": [
+        "Local runtime detected",
+        "0.11.4-fixture",
+        "fixture-catalog-r7",
+        "4",
+        "Model recommendation wizard",
+        "Troubleshooter",
+        "Seeded visual fixture — not live service proof"
+      ],
+      "evidenceKind": "seeded-visual-fixture",
+      "evidenceLabel": "Seeded visual fixture — not live service proof",
+      "fixtureSchemaVersion": 1,
+      "fixtureId": "ollama-runtime",
+      "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
+    },
+    {
+      "state": "model-catalog",
+      "expected": "Ollama Studio",
+      "output": "C:\\Users\\cntow\\Documents\\GitHub\\material-encryption\\docs\\assets\\runtime\\material-encryption-model-catalog.png",
+      "width": 1440,
+      "height": 900,
+      "logo": true,
+      "horizontalOverflow": false,
+      "headings": [
+        "Ollama Studio",
+        "Fixture Qwen",
+        "Fixture Gemma",
+        "Fixture Vision",
+        "Fixture Unknown"
+      ],
+      "markers": [
+        "4 total runtime-reported variants",
+        "Fixture Qwen",
+        "Fixture Gemma",
+        "Fixture Vision",
+        "Fixture Unknown",
+        "fixture-catalog-r7",
+        "Seeded visual fixture — not live service proof"
+      ],
+      "evidenceKind": "seeded-visual-fixture",
+      "evidenceLabel": "Seeded visual fixture — not live service proof",
+      "fixtureSchemaVersion": 1,
+      "fixtureId": "model-catalog",
+      "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
+    },
+    {
+      "state": "model-pc-fit",
+      "expected": "Ollama Studio",
+      "output": "C:\\Users\\cntow\\Documents\\GitHub\\material-encryption\\docs\\assets\\runtime\\material-encryption-model-pc-fit.png",
+      "width": 1440,
+      "height": 900,
+      "logo": true,
+      "horizontalOverflow": false,
+      "headings": [
+        "Ollama Studio",
+        "Fixture Qwen",
+        "Fixture Gemma",
+        "Fixture Vision",
+        "Fixture Unknown"
+      ],
+      "markers": [
+        "Fixture Qwen",
+        "Fixture Gemma",
+        "Fixture Vision",
+        "Fixture Unknown",
+        "Runs well",
+        "Runs with limits",
+        "Unlikely",
+        "Unknown",
+        "16 GB detected / 5.1 GB required",
+        "No fit verdict is guessed without complete evidence.",
+        "Seeded visual fixture — not live service proof"
+      ],
+      "evidenceKind": "seeded-visual-fixture",
+      "evidenceLabel": "Seeded visual fixture — not live service proof",
+      "fixtureSchemaVersion": 1,
+      "fixtureId": "model-pc-fit",
+      "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
+    },
+    {
+      "state": "download-cart",
+      "expected": "Download all models",
+      "output": "C:\\Users\\cntow\\Documents\\GitHub\\material-encryption\\docs\\assets\\runtime\\material-encryption-download-cart.png",
+      "width": 1440,
+      "height": 900,
+      "logo": true,
+      "horizontalOverflow": false,
+      "headings": [
+        "Ollama Studio",
+        "Download all models",
+        "Storage preflight",
+        "Per-model outcomes"
+      ],
+      "markers": [
+        "$0 — no purchase.",
+        "Fixture Gemma · 12b-q4_K_M",
+        "Fixture Vision · 32b-q5_K_M",
+        "Storage preflight",
+        "Per-model outcomes",
+        "62% seeded fixture progress",
+        "Seeded visual fixture — not live service proof"
+      ],
+      "evidenceKind": "seeded-visual-fixture",
+      "evidenceLabel": "Seeded visual fixture — not live service proof",
+      "fixtureSchemaVersion": 1,
+      "fixtureId": "download-cart",
+      "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
+    },
+    {
+      "state": "chat",
+      "expected": "Conversations",
+      "output": "C:\\Users\\cntow\\Documents\\GitHub\\material-encryption\\docs\\assets\\runtime\\material-encryption-chat.png",
+      "width": 1440,
+      "height": 900,
+      "logo": true,
+      "horizontalOverflow": false,
+      "headings": [
+        "Ollama Studio",
+        "Conversations",
+        "Local model",
+        "Suggested defaults"
+      ],
+      "markers": [
+        "Fixture local chat",
+        "Show the evidence boundary.",
+        "This is a seeded transcript, not a live model response.",
+        "Suggested defaults",
+        "Fixture Qwen · 4b-q4_K_M",
+        "Seeded visual fixture — not live service proof"
+      ],
+      "evidenceKind": "seeded-visual-fixture",
+      "evidenceLabel": "Seeded visual fixture — not live service proof",
+      "fixtureSchemaVersion": 1,
+      "fixtureId": "chat",
+      "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
+    },
+    {
+      "state": "harnesses",
+      "expected": "Ollama Studio",
+      "output": "C:\\Users\\cntow\\Documents\\GitHub\\material-encryption\\docs\\assets\\runtime\\material-encryption-harnesses.png",
+      "width": 1440,
+      "height": 900,
+      "logo": true,
+      "horizontalOverflow": false,
+      "headings": [
+        "Ollama Studio",
+        "Fixture Coding Harness",
+        "Fixture Vision Harness"
+      ],
+      "markers": [
+        "Fixture Coding Harness",
+        "Ready",
+        "Fixture Vision Harness",
+        "Unavailable",
+        "reviewed-coding-harness.exe",
+        "There is deliberately no arbitrary command box",
+        "Seeded visual fixture — not live service proof"
+      ],
+      "evidenceKind": "seeded-visual-fixture",
+      "evidenceLabel": "Seeded visual fixture — not live service proof",
+      "fixtureSchemaVersion": 1,
+      "fixtureId": "harnesses",
+      "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
+    },
+    {
+      "state": "restore",
+      "expected": "Snapshots and one-click restore",
+      "output": "C:\\Users\\cntow\\Documents\\GitHub\\material-encryption\\docs\\assets\\runtime\\material-encryption-restore.png",
+      "width": 1440,
+      "height": 900,
+      "logo": true,
+      "horizontalOverflow": false,
+      "headings": [
+        "Ollama Studio",
+        "Snapshots and one-click restore",
+        "Restore status"
+      ],
+      "markers": [
+        "Fixture Coding Harness",
+        "fixture-snapshot-ready",
+        "Fixture Vision Harness",
+        "fixture-snapshot-held",
+        "Restore status",
+        "Seeded snapshots for visual coverage",
+        "Seeded visual fixture — not live service proof"
+      ],
+      "evidenceKind": "seeded-visual-fixture",
+      "evidenceLabel": "Seeded visual fixture — not live service proof",
+      "fixtureSchemaVersion": 1,
+      "fixtureId": "restore",
       "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"
     }
   ]

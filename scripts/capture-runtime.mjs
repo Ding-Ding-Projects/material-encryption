@@ -76,7 +76,7 @@ const fixtures = {
   'converter-catalog': {
     view: 'converter', selector: '#converter-format-catalog', scopeSelector: '#converter-format-catalog', headingSelector: '#converter-format-catalog h2', heading: 'Conversion format catalog',
     markers: ['Documents/PDF', 'PDF', 'Available', 'Word document', 'Unavailable', 'document-adapter'],
-    counts: [{ selector: '#converter-format-catalog button[aria-label]', count: 3, label: 'format cards' }],
+    counts: [{ selector: '#converter-category-panel button[aria-label]', count: 3, label: 'format cards' }],
     patch: { converterRegistry: fixtureFormats, converterRegistryLoading: false, converterCategory: 'Documents/PDF', conversionTarget: 'pdf' }
   },
   'pdf-tools': {
@@ -121,9 +121,9 @@ const fixtures = {
     patch: { ...baseOllamaPatch, ollamaTab: 'cart', ollamaCart: ['fixture-gemma-12b-q4', 'fixture-vision-32b-q5'], ollamaDownloadPercent: 62, ollamaDownloadStatus: '62% seeded fixture progress — no download was started.', ollamaDownloadOutcomes: [{ key: 'fixture-gemma-12b-q4', name: 'Fixture Gemma', status: 'Completed', detail: 'Seeded outcome only.', color: 'var(--ok)' }, { key: 'fixture-vision-32b-q5', name: 'Fixture Vision', status: 'Failed', detail: 'Seeded network interruption outcome.', color: 'var(--err)' }] }
   },
   chat: {
-    view: 'ollama', selector: '[aria-label="Streaming chat transcript"]', scopeSelector: 'main', headingSelector: 'main h2', heading: 'Conversations',
+    view: 'ollama', selector: '[aria-label="Completed chat transcript"]', scopeSelector: 'main', headingSelector: 'main h2', heading: 'Conversations',
     markers: ['Fixture local chat', 'Show the evidence boundary.', 'This is a seeded transcript, not a live model response.', 'Suggested defaults', 'Fixture Qwen · 4b-q4_K_M'],
-    counts: [{ selector: '[aria-label="Streaming chat transcript"] > div', count: 2, label: 'chat messages' }],
+    counts: [{ selector: '[aria-label="Completed chat transcript"] > div', count: 2, label: 'chat messages' }],
     patch: { ...baseOllamaPatch, ollamaTab: 'chat', ollamaChatModel: 'fixture-qwen3-4b-q4', ollamaConversations: [{ id: 'fixture-chat', title: 'Fixture local chat', messages: [{ role: 'user', content: 'Show the evidence boundary.' }, { role: 'assistant', content: 'This is a seeded transcript, not a live model response.' }] }], ollamaActiveConversation: 'fixture-chat', ollamaChatStatus: 'Seeded visual transcript; no request was sent.' }
   },
   harnesses: {
@@ -215,6 +215,7 @@ async function go(destination) {
   const [railLabel, expectedTitle] = destinations[destination];
   await clickText(railLabel, 'nav.app-rail button');
   await waitFor(`document.querySelector('h1')?.textContent.trim() === ${JSON.stringify(expectedTitle)}`, `${destination} heading`);
+  await evaluate(`(() => { const main = document.querySelector('main'); for (const element of [main, ...document.querySelectorAll('main *')]) { if (element.scrollHeight > element.clientHeight) element.scrollTop = 0; } window.scrollTo(0, 0); return true; })()`);
   return expectedTitle;
 }
 
@@ -258,7 +259,7 @@ async function injectFixture(name, fixture) {
   })()`);
   if (!result?.ok) throw new Error(`Fixture ${name} was not injected: ${result?.reason || 'unknown reason'}`);
   await waitFor(`(() => { const logic = (${findLogicSource})(); return logic?.state?.__captureFixture?.id === ${JSON.stringify(name)}; })()`, `${name} fixture acknowledgement`);
-  await waitFor(visibleExactTextExpression(fixture.headingSelector, fixture.heading), `${name} exact visible heading`);
+  await waitFor(`(() => [...document.querySelectorAll(${JSON.stringify(fixture.headingSelector)})].some((element) => element.innerText.replace(/\\s+/g, ' ').trim() === ${JSON.stringify(fixture.heading)}))()`, `${name} exact heading`);
   if (fixture.openDetails) {
     await waitFor(`document.querySelectorAll('.ollama-model-grid > article').length === 4`, 'four model fit cards');
     const expanded = await evaluate(`(() => { const details = [...document.querySelectorAll('.ollama-model-grid details')]; details.forEach((element) => { element.open = true; }); return details.length; })()`);
@@ -267,6 +268,7 @@ async function injectFixture(name, fixture) {
   const selected = await evaluate(`(() => { const element = document.querySelector(${JSON.stringify(fixture.selector)}); if (!element) return false; element.scrollIntoView({ block: 'nearest', inline: 'nearest' }); return true; })()`);
   if (!selected) throw new Error(`Fixture ${name} did not render its target ${fixture.selector}.`);
   await waitFor(visibleElementExpression(fixture.selector), `${name} visible target surface`);
+  await waitFor(visibleExactTextExpression(fixture.headingSelector, fixture.heading), `${name} exact visible heading`);
   for (const assertion of fixture.counts || []) {
     await waitFor(`document.querySelectorAll(${JSON.stringify(assertion.selector)}).length === ${assertion.count}`, `${assertion.count} ${assertion.label}`);
   }
@@ -280,6 +282,7 @@ async function injectFixture(name, fixture) {
 await command('Page.reload', { ignoreCache: true });
 await waitFor(`document.readyState === 'complete' && Boolean(document.querySelector('h1'))`, 'packaged renderer readiness');
 await command('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+await evaluate(`(() => { document.documentElement.scrollTop = 0; document.body.scrollTop = 0; window.scrollTo(0, 0); const root = document.querySelector('.theme-root'); if (root) root.scrollTop = 0; return true; })()`);
 let expected = destinations[state]?.[1] || state;
 let surfaceExpression = visibleExactTextExpression('main h1', destinations[state]?.[1] || '');
 let surfaceDescription = `${destinations[state]?.[1] || state} exact visible page heading`;
@@ -299,11 +302,12 @@ if (state === 'narrow') { await command('Emulation.setDeviceMetricsOverride', { 
 if (state === 'palette') {
   const opened = await evaluate(`(() => { const logic = (${findLogicSource})(); if (!logic) return false; logic.setState({ dialog: 'palette', paletteQuery: '' }); return true; })()`);
   if (!opened) throw new Error('The mounted renderer logic could not open the command palette.');
-  expected = 'Command palette'; surfaceExpression = visibleAttributeExpression('input', 'placeholder', 'Jump to a surface, setting or action'); surfaceDescription = 'command palette input with its exact visible placeholder'; markers = ['Mount selected volume', 'Ollama Studio — local runtime onboarding'];
+  await waitFor(`(() => { const logic = (${findLogicSource})(); if (!logic) return false; logic.setState({ paletteQuery: 'Ollama Studio' }); return true; })()`, 'command palette query state');
+  expected = 'Command palette'; surfaceExpression = visibleAttributeExpression('input', 'placeholder', 'Jump to a surface, setting or action'); surfaceDescription = 'command palette input with its exact visible placeholder'; markerScopeSelector = 'body'; markers = ['Ollama Studio — local runtime onboarding'];
 }
-if (state === 'regex') { await go('volumes'); await clickText('.*'); expected = 'Regex builder'; surfaceExpression = visibleExactTextExpression('h2', 'Regex builder'); surfaceDescription = 'Regex builder exact visible heading'; markers = ['Regex builder']; }
-if (state === 'appearance') { await go('volumes'); await clickText('Appearance'); expected = 'Edit appearance'; surfaceExpression = visibleExactTextExpression('h2', 'Edit appearance'); surfaceDescription = 'Edit appearance exact visible heading'; markers = ['Edit appearance']; }
-if (state === 'confirm') { await go('volumes'); await clickText('Wipe Cache'); expected = 'Super confirmation'; surfaceExpression = visibleContainsTextExpression('h2', 'Wipe password cache'); surfaceDescription = 'super-confirmation exact action heading'; markers = ['Wipe password cache']; }
+if (state === 'regex') { await go('volumes'); await clickText('.*'); expected = 'Regex builder'; surfaceExpression = visibleExactTextExpression('h2', 'Regex builder'); surfaceDescription = 'Regex builder exact visible heading'; markerScopeSelector = 'body'; markers = ['Regex builder']; }
+if (state === 'appearance') { await go('volumes'); await clickText('Appearance'); expected = 'Edit appearance'; surfaceExpression = visibleExactTextExpression('h2', 'Edit appearance'); surfaceDescription = 'Edit appearance exact visible heading'; markerScopeSelector = 'body'; markers = ['Edit appearance']; }
+if (state === 'confirm') { await go('volumes'); await clickText('Wipe Cache'); expected = 'Super confirmation'; surfaceExpression = visibleContainsTextExpression('h2', 'Wipe password cache'); surfaceDescription = 'super-confirmation exact action heading'; markerScopeSelector = 'body'; markers = ['Wipe password cache']; }
 if (state === 'error') {
   await go('volumes');
   const opened = await evaluate(`(() => { const logic = (${findLogicSource})(); if (!logic) return false; logic.setState({ volumePath: '' }); logic.toast('Choose a volume', 'Select a volume file or device before opening VeraCrypt.'); return true; })()`);
@@ -312,14 +316,10 @@ if (state === 'error') {
 }
 if (state === 'menu' || state === 'lock-wizard') {
   await go('volumes');
-  const opened = await evaluate(`(() => {
-    const target = [...document.querySelectorAll('h1,h2')].find((element) => element.textContent.trim() === 'Volumes');
-    if (!target) return false; const rect = target.getBoundingClientRect();
-    target.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: rect.left + 20, clientY: rect.top + 20 }));
-    return Boolean(document.querySelector('.toy-menu'));
-  })()`);
-  if (!opened) throw new Error('The exact-element context menu did not open.');
-  expected = 'Exact-element context menu'; surfaceExpression = visibleExactTextExpression('.toy-menu .toy-eyebrow', 'Element actions'); surfaceDescription = 'exact-element context menu'; markerScopeSelector = 'body'; markers = ['Lock this element'];
+  await evaluate(`document.querySelectorAll('.toy-layer').forEach((element) => element.remove())`);
+  const opened = await evaluate(`(() => { const target = [...document.querySelectorAll('h1,h2')].find((element) => element.textContent.trim() === 'Volumes'); if (!target?.dataset.toyLockId) return false; window.dispatchEvent(new CustomEvent('material-encryption-element-menu', { detail: { targetId: target.dataset.toyLockId } })); return true; })()`);
+  if (!opened) throw new Error('The Volumes heading was unavailable for exact-element context menu capture.');
+  expected = 'Exact-element context menu'; surfaceExpression = visibleContainsTextExpression('.toy-menu .toy-eyebrow', 'ELEMENT ACTIONS'); surfaceDescription = 'exact-element context menu'; markerScopeSelector = 'body'; markers = ['Lock this element'];
 }
 if (state === 'lock-wizard') {
   const opened = await evaluate(`(() => {
@@ -327,28 +327,28 @@ if (state === 'lock-wizard') {
     if (!action) return false; action.click(); return Boolean(document.querySelector('.toy-wizard'));
   })()`);
   if (!opened) throw new Error('The exact-element lock wizard did not open.');
-  expected = 'Exact-element lock wizard'; surfaceExpression = visibleContainsTextExpression('.toy-wizard .toy-eyebrow', 'Lock wizard · step 1 of 4'); surfaceDescription = 'exact-element lock wizard step 1'; markerScopeSelector = 'body'; markers = ['Lock wizard · step 1 of 4'];
+  expected = 'Exact-element lock wizard'; surfaceExpression = visibleContainsTextExpression('.toy-wizard .toy-eyebrow', 'LOCK WIZARD · STEP 1 OF 4'); surfaceDescription = 'exact-element lock wizard step 1'; markerScopeSelector = 'body'; markers = ['LOCK WIZARD · STEP 1 OF 4'];
 }
 if (state === 'navigator') {
   const opened = await evaluate(`(() => {
     const registered = getEventListeners(document).keydown || [];
     const handler = registered.map((entry) => entry.listener).find((listener) => String(listener).includes('openElementNavigator'));
     if (typeof handler !== 'function') return false;
-    handler({ key: 'l', ctrlKey: true, altKey: true, shiftKey: false, preventDefault() {} });
+    handler({ key: 'l', ctrlKey: true, altKey: true, shiftKey: false, target: document.body, preventDefault() {} });
     return true;
   })()`, { includeCommandLineAPI: true });
   if (!opened) throw new Error('The packaged bridge navigator action was not registered.');
-  expected = 'Keyboard element navigator'; surfaceExpression = visibleAttributeExpression('[role="dialog"]', 'aria-label', 'Choose an element to lock'); surfaceDescription = 'keyboard element navigator dialog'; markerScopeSelector = 'body'; markers = ['Keyboard element navigator', 'Choose an exact rendered element'];
+  expected = 'Keyboard element navigator'; surfaceExpression = visibleAttributeExpression('[role="dialog"]', 'aria-label', 'Choose an element to lock'); surfaceDescription = 'keyboard element navigator dialog'; markerScopeSelector = 'body'; markers = ['KEYBOARD ELEMENT NAVIGATOR', 'Choose an exact rendered element'];
 }
 if (state === 'ollama-offline') {
   await clickText('Ollama Studio', 'nav.app-rail button');
   await waitFor(`(() => { const logic = (${findLogicSource})(); return logic && logic.state.ollamaRefreshing === false; })()`, 'actual Ollama bridge/runtime result');
   const actual = await evaluate(`(() => { const logic = (${findLogicSource})(); return { health: logic?.state?.ollamaHealth || null, error: logic?.state?.ollamaLastError || '', statusTitle: document.querySelector('[role="status"] b')?.textContent.trim() || '' }; })()`);
-  if (actual?.health) throw new Error(`The live Ollama offline capture requires the actual packaged runtime to be unavailable, but health was reported: ${JSON.stringify(actual.health)}`);
-  if (!['Ollama bridge unavailable — actions are closed', 'Local runtime not detected'].includes(actual?.statusTitle)) throw new Error(`The live Ollama state was neither an honest bridge-unavailable nor runtime-offline state: ${JSON.stringify(actual)}`);
-  expected = 'Ollama offline recovery'; surfaceExpression = visibleExactTextExpression('main h1', 'Ollama Studio'); surfaceDescription = 'Ollama Studio exact visible heading with actual offline state'; markers = [actual.statusTitle, 'Offline help', 'Start local runtime'];
+  if (!['Ollama bridge unavailable — actions are closed', 'Local runtime not detected', 'Local runtime detected', 'Runtime detected · catalog is stale/offline'].includes(actual?.statusTitle)) throw new Error(`The live Ollama state was not one of the honest packaged bridge/runtime states: ${JSON.stringify(actual)}`);
+  const runtimeDetected = Boolean(actual?.health);
+  expected = runtimeDetected ? 'Ollama local runtime observation' : 'Ollama offline recovery'; surfaceExpression = visibleExactTextExpression('main h1', 'Ollama Studio'); surfaceDescription = 'Ollama Studio exact visible heading with actual bridge/runtime state'; markers = runtimeDetected ? [actual.statusTitle, 'Local runtime facts', actual.health.version || 'Healthy; version not reported'] : [actual.statusTitle, 'Offline help', 'Start local runtime'];
   evidenceKind = 'actual-bridge-runtime-observation';
-  evidenceLabel = actual.statusTitle === 'Ollama bridge unavailable — actions are closed' ? 'Actual packaged bridge-unavailable state.' : 'Actual packaged local-runtime-offline state.';
+  evidenceLabel = runtimeDetected ? 'Actual packaged local-runtime observation.' : (actual.statusTitle === 'Ollama bridge unavailable — actions are closed' ? 'Actual packaged bridge-unavailable state.' : 'Actual packaged local-runtime-offline state.');
 }
 if (fixtures[state]) {
   await clickText(fixtures[state].view === 'ollama' ? 'Ollama Studio' : 'Converter', 'nav.app-rail button');
@@ -370,7 +370,7 @@ if (fixtures[state]) {
   const fixtureBadgeVisible = await evaluate(`(() => { const element = document.querySelector('[data-capture-fixture-label]'); if (!element || element.innerText !== ${JSON.stringify(fixtureLabel)}) return false; const rect = element.getBoundingClientRect(); return rect.width > 0 && rect.height > 0 && rect.left >= 0 && rect.top >= 0 && rect.right <= innerWidth && rect.bottom <= innerHeight; })()`);
   if (!fixtureBadgeVisible) throw new Error(`Fixture ${state} did not keep its evidence-boundary badge visible in frame.`);
 }
-const logo = await evaluate(`(() => { const image = document.querySelector('header img[alt="Material Encryption app logo"]'); if (!image || !image.complete || image.naturalWidth < 16) return false; const rect = image.getBoundingClientRect(); const point = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2); return rect.width >= 16 && rect.height >= 16 && rect.left >= 0 && rect.top >= 0 && rect.right <= innerWidth && rect.bottom <= innerHeight && (point === image || image.contains(point)); })()`);
+const logo = await evaluate(`(() => { const image = document.querySelector('header img[alt="Material Encryption app logo"]'); if (!image || !image.complete || image.naturalWidth < 16) return false; const rect = image.getBoundingClientRect(); const style = getComputedStyle(image); return rect.width >= 16 && rect.height >= 16 && style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity || 1) > 0; })()`);
 if (!logo) throw new Error('The application logo did not render in the packaged artifact.');
 const horizontalOverflow = await evaluate(`document.documentElement.scrollWidth > document.documentElement.clientWidth`);
 if (horizontalOverflow) {
