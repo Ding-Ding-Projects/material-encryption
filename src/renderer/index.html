@@ -1670,30 +1670,27 @@ class Component extends DCLogic {
     const units = ['B', 'KB', 'MB', 'GB', 'TB'];
     let size = value, unit = 0;
     while (size >= 1024 && unit < units.length - 1) { size /= 1024; unit += 1; }
-    return `${size >= 100 || unit === 0 ? Math.round(size) : size.toFixed(2)} ${units[unit]}`;
+    return (size >= 100 || unit === 0 ? Math.round(size) : size.toFixed(1)) + ' ' + units[unit];
   }
 
-  // Live drive letters read from the operating system. A row is only marked
-  // mounted when its NT device target belongs to the VeraCrypt driver.
   async loadDrives() {
     const api = window.materialEncryption;
-    if (!api || typeof api.listDrives !== 'function') return;
+    if (!api || typeof api.listDrives !== 'function') { this.setState({ drivesError: 'The volume bridge is unavailable in this build.' }); return; }
     try {
       const result = await api.listDrives();
-      if (result?.ok) this.setState({ driveRows: result.value.drives, drivesError: result.value.error, drivesQueriedAt: result.value.queriedAt });
-      else this.setState({ drivesError: result?.error || 'Drive letters could not be queried.' });
-    } catch (error) { this.setState({ drivesError: error?.message || String(error) }); }
+      if (result && result.ok) this.setState({ driveRows: result.value.drives, drivesError: result.value.error, drivesQueriedAt: result.value.queriedAt });
+      else this.setState({ drivesError: (result && result.error) || 'Drive letters could not be queried.' });
+    } catch (error) { this.setState({ drivesError: (error && error.message) || String(error) }); }
   }
 
   drivesData() {
     const rows = Array.isArray(this.state.driveRows) ? this.state.driveRows : [];
-    if (!rows.length) return [];
     return rows.map(row => ({
       letter: row.letter,
       path: row.device || '',
       size: this.formatBytes(row.sizeBytes),
       algo: row.mounted ? (row.fileSystem || 'Mounted') : '',
-      type: row.mounted ? 'VeraCrypt' : (row.device ? row.driveType : 'Free'),
+      type: row.mounted ? 'VeraCrypt' : (row.device ? row.driveType : ''),
       mounted: Boolean(row.mounted),
       inUse: Boolean(row.device),
       label: row.label || ''
@@ -1922,7 +1919,7 @@ class Component extends DCLogic {
 
     const pill = (on) => 'padding:9px 18px;border-radius:20px;cursor:pointer;font-weight:500;border:1px solid ' + (on ? 'transparent' : 'var(--outv)') + ';background:' + (on ? 'var(--pc)' : 'transparent') + ';color:' + (on ? 'var(--opc)' : 'var(--on)');
 
-    const props = [['Status', 'Open VeraCrypt to read authoritative volume properties.']];
+    const props = [['Status', 'Open a container to read its real properties.']];
 
     const favData = [];
 
@@ -2440,7 +2437,7 @@ class Component extends DCLogic {
       regexChipStyle: 'display:inline-flex;align-items:center;height:34px;padding:0 14px;border-radius:17px;background:var(--s3);color:var(--onv);font-size:12px;font-weight:500;white-space:nowrap',
       regexChipLabel: 'Plain text — regex off',
       drives: drives.map((d, i) => ({
-        letter: d.letter, size: d.size || '—', algo: d.algo || '—', type: d.mounted ? d.type : '—',
+        letter: d.letter, size: d.size || '—', algo: d.algo || '—', type: d.type || '—',
         path: d.path || '—', pathColor: d.mounted ? 'var(--on)' : 'var(--out)',
         select: () => this.setState({ selected: d.letter, volumePath: d.path || s.volumePath }),
         menu: (e) => { this.setState({ selected: d.letter }); this.openMenu(e, d.letter + (d.mounted ? ' · mounted' : ' · free'), d.mounted ? [
