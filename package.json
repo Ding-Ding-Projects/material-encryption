@@ -27,7 +27,6 @@
     "package": "npm run test:brand && npm run prepare:renderer && electron-builder --win --x64 --dir",
     "dist": "npm run test:brand && npm run prepare:renderer && npm run dist:unsigned",
     "dist:unsigned": "electron-builder --win squirrel --x64",
-    "fetch:veracrypt": "node scripts/fetch-veracrypt.mjs",
     "ensure:electron": "node scripts/ensure-electron-binary.mjs"
   },
   "dependencies": {
@@ -70,15 +69,6 @@
       "artifactName": "MaterialEncryption-Setup-${version}-${arch}.${ext}",
       "remoteReleases": "https://github.com/Ding-Ding-Projects/material-encryption",
       "iconUrl": "https://raw.githubusercontent.com/Ding-Ding-Projects/material-encryption/main/build/material-encryption.ico"
-    },
-    "extraResources": [
-      {
-        "from": "build/veracrypt",
-        "to": "veracrypt",
-        "filter": [
-          "**/*"
-        ]
-      }
-    ]
+    }
   }
 }

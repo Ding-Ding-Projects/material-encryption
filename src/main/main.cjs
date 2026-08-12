@@ -195,6 +195,56 @@ app.whenReady().then(() => {
       prf: boundedText(payload.prf || 'Autodetection', 'Key derivation function', 32)
     });
   });
+  // Browsing and changing files inside a container, with no drive letter and no
+  // driver. The password is used per call and never held.
+  const fileCredentials = (payload) => ({
+    volume: boundedText(payload.volume, 'Container path', 2048),
+    password: boundedText(payload.password, 'Password', 128),
+    pim: Number(payload.pim) || 0,
+    prf: boundedText(payload.prf || 'Autodetection', 'Key derivation function', 32)
+  });
+  const innerPath = (value, name = 'Path inside the container') => {
+    const text = typeof value === 'string' && value.trim() ? value : '/';
+    if (text.length > 4096 || text.includes('\0')) throw new Error(`${name} is invalid.`);
+    return text;
+  };
+
+  register('volume:list-files', (value) => {
+    const payload = exactRecord(value, ['volume', 'password', 'pim', 'prf', 'path'], 'Volume payload');
+    return engine.listFiles({ ...fileCredentials(payload), path: innerPath(payload.path) });
+  });
+  register('volume:read-file', async (value) => {
+    const payload = exactRecord(value, ['volume', 'password', 'pim', 'prf', 'path'], 'Volume payload');
+    const contents = await engine.readFile({ ...fileCredentials(payload), path: innerPath(payload.path) });
+    return { bytes: contents.length, base64: contents.toString('base64') };
+  });
+  register('volume:extract-file', async (value) => {
+    const payload = exactRecord(value, ['volume', 'password', 'pim', 'prf', 'path'], 'Volume payload');
+    const inner = innerPath(payload.path);
+    const result = await dialog.showSaveDialog(mainWindow, { title: 'Extract file from container', defaultPath: path.basename(inner) });
+    if (result.canceled || !result.filePath) return null;
+    const contents = await engine.readFile({ ...fileCredentials(payload), path: inner });
+    await fs.writeFile(result.filePath, contents);
+    return { path: result.filePath, bytes: contents.length };
+  });
+  register('volume:add-file', async (value) => {
+    const payload = exactRecord(value, ['volume', 'password', 'pim', 'prf', 'path'], 'Volume payload');
+    const chosen = await dialog.showOpenDialog(mainWindow, { title: 'Add a file to the container', properties: ['openFile'] });
+    if (chosen.canceled || !chosen.filePaths[0]) return null;
+    const source = chosen.filePaths[0];
+    const contents = await fs.readFile(source);
+    const target = `${innerPath(payload.path).replace(/\/+$/, '')}/${path.basename(source)}`;
+    return engine.writeFile({ ...fileCredentials(payload), path: target, contents });
+  });
+  register('volume:delete-file', (value) => {
+    const payload = exactRecord(value, ['volume', 'password', 'pim', 'prf', 'path'], 'Volume payload');
+    return engine.deleteFile({ ...fileCredentials(payload), path: innerPath(payload.path) });
+  });
+  register('volume:make-directory', (value) => {
+    const payload = exactRecord(value, ['volume', 'password', 'pim', 'prf', 'path'], 'Volume payload');
+    return engine.makeDirectory({ ...fileCredentials(payload), path: innerPath(payload.path) });
+  });
+
   register('volume:select-target', async () => {
     const result = await dialog.showSaveDialog(mainWindow, { title: 'Create a new encrypted container', defaultPath: 'container.hc', filters: [{ name: 'Encrypted container', extensions: ['hc'] }] });
     return result.canceled || !result.filePath ? null : result.filePath;

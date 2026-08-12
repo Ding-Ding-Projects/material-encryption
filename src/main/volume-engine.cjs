@@ -10,6 +10,7 @@ const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
 const fmt = require('./volume-format.cjs');
+const fat32 = require('./fat32.cjs');
 
 const MIN_VOLUME_BYTES = 64 * 1024 * 1024;
 const MAX_VOLUME_BYTES = 8 * 1024 ** 4;
@@ -121,13 +122,22 @@ function fat32LabelEntry(volumeLabel) {
   return entry;
 }
 
-// Yields [sectorIndex, buffer] pairs covering every non-zero sector of a fresh
-// FAT32 filesystem. Everything not yielded is already zero-filled.
+// Yields [sectorIndex, buffer] pairs for every sector of a fresh FAT32
+// filesystem that must not be random.
+//
+// The whole FAT area has to be written, not just its first sector: the data
+// area is deliberately filled with random bytes, and any FAT sector left
+// holding those bytes reads back as a table where every cluster is already
+// allocated. The volume then reports itself full while appearing empty, which
+// is exactly what it did before this covered the full span.
 function* fat32Sectors(totalSectors, volumeLabel) {
   const geometry = fat32Geometry(totalSectors);
   const serial = crypto.randomBytes(4).readUInt32LE(0);
   const boot = fat32BootSector(totalSectors, geometry, volumeLabel, serial);
   const info = fat32InfoSector(geometry.clusters - 1);
+  const blank = Buffer.alloc(fmt.DEFAULT_SECTOR_SIZE);
+
+  for (let sector = 0; sector < geometry.reservedSectors; sector += 1) yield [sector, blank];
   yield [0, boot];
   yield [1, info];
   yield [6, boot];
@@ -138,13 +148,17 @@ function* fat32Sectors(totalSectors, volumeLabel) {
   firstFatEntries.writeUInt32LE(0x0fffffff, 4);   // end of chain
   firstFatEntries.writeUInt32LE(0x0fffffff, 8);   // root directory, one cluster
   for (let fat = 0; fat < geometry.numberOfFats; fat += 1) {
-    yield [geometry.reservedSectors + fat * geometry.fatSectors, firstFatEntries];
+    const base = geometry.reservedSectors + fat * geometry.fatSectors;
+    for (let sector = 0; sector < geometry.fatSectors; sector += 1) yield [base + sector, sector === 0 ? firstFatEntries : blank];
   }
 
+  // The root directory's whole first cluster, so no random byte is mistaken for
+  // a directory entry.
   const rootSector = geometry.reservedSectors + geometry.numberOfFats * geometry.fatSectors;
   const root = Buffer.alloc(fmt.DEFAULT_SECTOR_SIZE);
   fat32LabelEntry(volumeLabel).copy(root, 0);
   yield [rootSector, root];
+  for (let sector = 1; sector < geometry.sectorsPerCluster; sector += 1) yield [rootSector + sector, blank];
 }
 
 // ---------------------------------------------------------------------------
@@ -384,8 +398,71 @@ async function readSectors({ volume, password, pim, prf, sectorIndex = 0, sector
   }
 }
 
+// Opens the container and hands FAT32 a sector device that decrypts on read and
+// re-encrypts on write, so the filesystem code never sees ciphertext and the
+// master key never leaves this function. This is what makes a container usable
+// without a drive letter: no driver, no mounting, no external program.
+async function withFilesystem({ volume, password, pim, prf, writable = false }, callback) {
+  const opened = await openVolume({ volume, password, pim, prf });
+  const handle = await fsp.open(opened.path, writable ? 'r+' : 'r');
+  const sectorSize = opened.sectorSize;
+  const limit = opened.encryptedAreaStart + opened.encryptedAreaLength;
+
+  const device = {
+    sectorSize,
+    read(sectorIndex, count) {
+      const out = Buffer.alloc(count * sectorSize);
+      for (let index = 0; index < count; index += 1) {
+        const unit = sectorIndex + index;
+        const offset = opened.encryptedAreaStart + unit * sectorSize;
+        if (offset + sectorSize > limit) throw new Error('A read went past the end of the encrypted area.');
+        const ciphertext = Buffer.alloc(sectorSize);
+        fs.readSync(handle.fd, ciphertext, 0, sectorSize, offset);
+        fmt.decryptDataUnit(opened.cipher, opened.masterKey, unit, ciphertext).copy(out, index * sectorSize);
+      }
+      return out;
+    },
+    write(sectorIndex, data) {
+      if (!writable) throw new Error('This container was opened read-only.');
+      if (data.length % sectorSize !== 0) throw new Error('A write must be a whole number of sectors.');
+      for (let index = 0; index < data.length / sectorSize; index += 1) {
+        const unit = sectorIndex + index;
+        const offset = opened.encryptedAreaStart + unit * sectorSize;
+        if (offset + sectorSize > limit) throw new Error('A write went past the end of the encrypted area.');
+        const plaintext = data.subarray(index * sectorSize, (index + 1) * sectorSize);
+        const ciphertext = fmt.encryptDataUnit(opened.cipher, opened.masterKey, unit, plaintext);
+        fs.writeSync(handle.fd, ciphertext, 0, sectorSize, offset);
+      }
+    }
+  };
+
+  try {
+    return await callback(fat32.createVolume(device), opened);
+  } finally {
+    if (writable) await handle.sync().catch(() => {});
+    await handle.close();
+    opened.masterKey.fill(0);
+  }
+}
+
+const listFiles = ({ volume, password, pim, prf, path: inner = '/' }) =>
+  withFilesystem({ volume, password, pim, prf }, (filesystem) => ({ entries: filesystem.list(inner), usage: filesystem.usage(), path: inner }));
+
+const readFile = ({ volume, password, pim, prf, path: inner }) =>
+  withFilesystem({ volume, password, pim, prf }, (filesystem) => filesystem.readFile(inner));
+
+const writeFile = ({ volume, password, pim, prf, path: inner, contents }) =>
+  withFilesystem({ volume, password, pim, prf, writable: true }, (filesystem) => filesystem.writeFile(inner, contents));
+
+const deleteFile = ({ volume, password, pim, prf, path: inner }) =>
+  withFilesystem({ volume, password, pim, prf, writable: true }, (filesystem) => filesystem.deleteFile(inner));
+
+const makeDirectory = ({ volume, password, pim, prf, path: inner }) =>
+  withFilesystem({ volume, password, pim, prf, writable: true }, (filesystem) => filesystem.makeDirectory(inner));
+
 module.exports = {
   MIN_VOLUME_BYTES, MAX_VOLUME_BYTES,
+  withFilesystem, listFiles, readFile, writeFile, deleteFile, makeDirectory,
   create, verify, describe, changePassword, backupHeader, restoreHeader, readSectors,
   availableCiphers: fmt.availableCiphers, availablePrfs: fmt.availablePrfs,
   fat32Geometry, dataAreaLength, assertSize, assertVolumePath

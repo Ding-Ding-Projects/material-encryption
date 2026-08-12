@@ -49,8 +49,6 @@ const enqueueInChunks = async (payload = {}) => {
 };
 contextBridge.exposeInMainWorld('materialEncryption', Object.freeze({
   getStatus: () => invoke('vc:status'),
-  installVeraCrypt: () => invoke('vc:install'),
-  installStatus: () => invoke('vc:install-status'),
   listDrives: () => invoke('vc:drives'),
   volumeCapabilities: () => invoke('volume:capabilities'),
   createVolume: (options) => invoke('volume:create', options),
@@ -59,6 +57,12 @@ contextBridge.exposeInMainWorld('materialEncryption', Object.freeze({
   backupVolumeHeader: (options) => invoke('volume:backup-header', options),
   restoreVolumeHeader: (options) => invoke('volume:restore-header', options),
   selectNewVolumeTarget: () => invoke('volume:select-target'),
+  listVolumeFiles: (options) => invoke('volume:list-files', options),
+  readVolumeFile: (options) => invoke('volume:read-file', options),
+  extractVolumeFile: (options) => invoke('volume:extract-file', options),
+  addVolumeFile: (options) => invoke('volume:add-file', options),
+  deleteVolumeFile: (options) => invoke('volume:delete-file', options),
+  makeVolumeDirectory: (options) => invoke('volume:make-directory', options),
   onVolumeCreateProgress: (listener) => {
     if (typeof listener !== 'function') throw new Error('A progress listener function is required.');
     const handler = (_event, progress) => listener(progress);
