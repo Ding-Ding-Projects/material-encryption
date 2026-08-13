@@ -2,6 +2,11 @@
 
 ## 0.1.10
 
+### Right-click menus close again
+
+- A right-click opened the element menu and nothing dismissed it. `src/renderer/bridge.js` had no outside-click handler at all: its capture-phase `click` listener returned early for anything that was not a locked element, so a click beside the menu left it on screen, and the `Edit this element appearance…` entry dispatched its event without closing. Escape was the only exit. Menus now close on outside press, on losing window focus, on resize, on scrolling the page behind them, on focus moving away, and on activating an entry — and closing returns focus to the control the menu was opened from. Outside dismissal is deliberately limited to menus: the lock wizard holds typed input across four steps and keeps its explicit Cancel and Escape routes.
+- The application's own context menu had the same gap from the other direction: Escape cleared the dialog state and left `menu` set, so the menu stayed up, and nothing restored focus. Four new renderer transforms in `scripts/prepare-renderer.mjs` — `context menu close path`, `context menu escape close`, `context menu scrim close` and `context menu item activation close` — route every dismissal through one `closeAppMenu` method that also clears the menu's search query and hands focus back.
+
 ### Cryptography is now performed by this application
 
 - Added `src/main/volume-format.cjs` and `src/main/volume-engine.cjs`, which implement the VeraCrypt volume header directly: PBKDF2 header keys, XTS, both CRC-32 fields, the primary and backup headers, and the documented non-system iteration rules. Header offsets and iteration counts were checked against the upstream source at tag `VeraCrypt_1.26.29` rather than from memory.

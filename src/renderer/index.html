@@ -1480,7 +1480,7 @@ class Component extends DCLogic {
     this.loadLogoState();
     this.onKey = (e) => {
       if (e.ctrlKey && e.shiftKey && (e.key === 'F' || e.key === 'f')) { e.preventDefault(); this.setState({ dialog: 'palette', paletteQuery: '' }); }
-      else if (e.key === 'Escape') this.setState({ dialog: null, keyA: false, keyL: false });
+      else if (e.key === 'Escape') { if (this.state.menu) { e.preventDefault(); this.closeAppMenu(); return; } this.setState({ dialog: null, keyA: false, keyL: false }); }
     };
     window.addEventListener('keydown', this.onKey);
     this.timer = setInterval(() => this.setState(s => ({ tick: s.tick + 1 })), 1000);
@@ -1700,9 +1700,17 @@ class Component extends DCLogic {
     }));
   }
 
+  closeAppMenu(restoreFocus) {
+    const opener = this.menuOpener;
+    this.menuOpener = null;
+    if (this.state.menu) this.setState({ menu: null, menuQuery: '' });
+    if (restoreFocus !== false && opener && document.contains(opener) && typeof opener.focus === 'function') opener.focus();
+  }
+
   openMenu(e, title, items) {
     e.preventDefault();
     e.stopPropagation();
+    this.menuOpener = e.currentTarget instanceof HTMLElement ? e.currentTarget : document.activeElement;
     const anchor = e.currentTarget?.getBoundingClientRect?.();
     const requestedX = Number(e.clientX) || anchor?.right || 12;
     const requestedY = Number(e.clientY) || anchor?.bottom || 12;
@@ -2355,10 +2363,10 @@ class Component extends DCLogic {
       menuStyle: 'position:fixed;left:' + (s.menu ? s.menu.x : 0) + 'px;top:' + (s.menu ? s.menu.y : 0) + 'px;min-width:262px;max-width:340px;padding:6px;background:var(--s3);border:1px solid var(--outv);border-radius:12px;box-shadow:0 12px 34px #000b',
       menuItems: menuItemsFiltered.map(m => ({
         label: m[0], keys: m[2] || '',
-        run: () => { this.setState({ menu: null }); if (m[1]) m[1](); },
+        run: () => { this.closeAppMenu(false); if (m[1]) m[1](); },
         style: 'width:100%;display:flex;justify-content:space-between;gap:20px;align-items:center;padding:10px 14px;border:0;border-radius:8px;background:transparent;text-align:left;cursor:pointer;color:' + (m[3] ? 'var(--err)' : 'var(--on)')
       })),
-      closeMenu: () => this.setState({ menu: null }),
+      closeMenu: () => this.closeAppMenu(),
       surfaceMenu: (e) => this.openMenu(e, 'This surface', [
         ['Refresh', () => this.toast('Refreshed', 'Driver state re-read'), 'F5'],
         ['Edit appearance…', () => this.setState({ dialog: 'appearance' })],
