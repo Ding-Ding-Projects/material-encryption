@@ -160,7 +160,9 @@ jobs:
           $lineCount = Get-Content -Raw "$env:RUNNER_TEMP/line-count.md"
           $notesPath = Join-Path $env:RUNNER_TEMP 'release-notes.md'
           $assets = @(Get-ChildItem -LiteralPath '${{ steps.evidence.outputs.stage }}' -File | ForEach-Object FullName)
-          $expectedAssetNames = @('${{ steps.evidence.outputs.setup }}', 'RELEASES', '${{ steps.evidence.outputs.delta }}', '${{ steps.evidence.outputs.package }}', 'build-evidence.json', '${{ steps.evidence.outputs.dim_sum }}') | Sort-Object
+          # The delta output is empty when Squirrel produced no delta package, and
+          # an empty name must not become a phantom asset the comparison demands.
+          $expectedAssetNames = @('${{ steps.evidence.outputs.setup }}', 'RELEASES', '${{ steps.evidence.outputs.delta }}', '${{ steps.evidence.outputs.package }}', 'build-evidence.json', '${{ steps.evidence.outputs.dim_sum }}') | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object
           $assetNames = @(Get-ChildItem -LiteralPath '${{ steps.evidence.outputs.stage }}' -File | ForEach-Object Name | Sort-Object)
           if (Compare-Object $expectedAssetNames $assetNames) { throw 'Release staging does not contain the exact required asset names.' }
           Set-Content -LiteralPath $notesPath -Value 'Draft release preparation.' -Encoding utf8
@@ -179,7 +181,7 @@ jobs:
 
           - __SETUP__
           - Full update package: __FULL__
-          - Delta update package: __DELTA__
+          - Delta update package: __DELTA_LINE__
           - SHA-256: __HASH__
           - Signature: NotSigned
 
@@ -212,7 +214,7 @@ jobs:
             Replace('__SHA__', '${{ github.sha }}').
             Replace('__SETUP__', '${{ steps.evidence.outputs.setup }}').
             Replace('__FULL__', '${{ steps.evidence.outputs.package }}').
-            Replace('__DELTA__', '${{ steps.evidence.outputs.delta }}').
+            Replace('__DELTA_LINE__', $(if ([string]::IsNullOrWhiteSpace('${{ steps.evidence.outputs.delta }}')) { 'not generated for this release; the full package performs the update' } else { '${{ steps.evidence.outputs.delta }}' })).
             Replace('__DIM_SUM__', '${{ steps.evidence.outputs.dim_sum }}').
             Replace('__HASH__', '${{ steps.evidence.outputs.sha256 }}').
             Replace('__STARTED__', $started.ToUniversalTime().ToString('o')).
@@ -241,7 +243,7 @@ jobs:
           gh release download $tag --pattern RELEASES --pattern '*.nupkg' --dir $publishedProofDirectory --clobber
           if ($LASTEXITCODE -ne 0) { throw 'Published Squirrel.Windows update assets could not be downloaded for verification.' }
           $releaseIndexText = Get-Content -Raw -LiteralPath (Join-Path $publishedProofDirectory 'RELEASES')
-          foreach ($packageName in @('${{ steps.evidence.outputs.delta }}', '${{ steps.evidence.outputs.package }}')) {
+          foreach ($packageName in @('${{ steps.evidence.outputs.delta }}', '${{ steps.evidence.outputs.package }}') | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) {
             $packagePath = Join-Path $publishedProofDirectory $packageName
             if (-not (Test-Path -LiteralPath $packagePath -PathType Leaf)) { throw "Published package is missing: $packageName" }
             $escapedPackageName = [regex]::Escape($packageName)

@@ -42,6 +42,11 @@ assert.ok(publishStep.includes('Compare-Object $expectedAssetNames $publishedAss
 assert.ok(publishStep.includes('gh release download $tag --pattern RELEASES'), 'Publication must download the published RELEASES asset before validating linkage.');
 assert.ok(publishStep.includes("--pattern '*.nupkg'"), 'Publication must download and validate every published update package.');
 assert.ok(publishStep.includes('Published RELEASES integrity metadata does not match the downloaded package'), 'Publication must verify downloaded package bytes against RELEASES.');
-assert.ok(publishStep.includes("Replace('__DELTA__', '${{ steps.evidence.outputs.delta }}')"), 'Release notes must identify the exact delta update package.');
+// The notes name the delta package when one exists and say plainly that none
+// was generated when it does not, rather than rendering an empty bullet that
+// leaves a reader guessing whether an asset is missing.
+assert.ok(publishStep.includes("Replace('__DELTA_LINE__'"), 'Release notes must fill the delta line from the run.');
+assert.ok(publishStep.includes("'${{ steps.evidence.outputs.delta }}'"), 'Release notes must identify the exact delta update package when one was produced.');
+assert.ok(publishStep.includes('not generated for this release'), 'Release notes must state plainly when no delta package was produced.');
 assert.ok(publishStep.includes('$tag = "v$packageVersion-build.${{ github.run_number }}"'), 'Unique tags must preserve the monotonic package version without impersonating it.');
 console.log(`PASS: ${jobs.length} workflow job has an explicit dependency inventory and cache-miss bootstrap path.`);
