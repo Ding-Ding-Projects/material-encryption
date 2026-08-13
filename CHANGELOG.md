@@ -28,6 +28,16 @@
 - Added `scripts/build-driver.ps1`, which goes from a bare checkout to a verified `veracrypt.sys` and asserts the artifact it produced: x64, native subsystem, imports `ntoskrnl.exe`, and unsigned. Nothing signs, test-signs, or requests a certificate.
 - Loading that driver requires the machine's owner to disable Windows driver signature enforcement themselves. This project does not do that and does not ask for it.
 
+### Volume Creation Wizard
+
+- The wizard now creates containers. Its final step calls the volume engine this application already ships, passing the path, size, password, cipher, key derivation function and filesystem chosen on the earlier steps, and reports the engine's real outcome — the created path, size, cipher, KDF and filesystem, or the exact error text.
+- Step 7 previously showed a constant 63%, a constant "Speed 148 MB/s · Left 00:02:14" and a constant "8F2A C41D 9BE0 3E77" entropy pool, none of which measured anything. The percentage now comes from the engine's own progress events, and the rate and remaining time are computed from bytes actually written over elapsed time. Before either can be measured the step says so ("Speed not measurable yet", "no progress reported yet") instead of showing a number.
+- The Random Pool now shows eight bytes drawn from the platform cryptographic random source, redrawn every second and mixed with each pointer movement over the window. The copy beside it states plainly that moving the mouse changes the displayed pool, and that the container's master key is drawn separately by the operating system rather than from it — the prototype's claim that mouse movement improved key strength was not true of this engine.
+- The Filesystem dropdown offered NTFS, exFAT, FAT and ReFS, and NTFS was the default, while the engine writes FAT32 or leaves the container unformatted. It now offers exactly FAT32 and None, and FAT32 is the default.
+- Encryption Options are populated from the engine's capability report. Camellia and Kuznyechik remain listed, disabled, with the engine's own reason shown beside them, rather than being offered as though they worked. The hash dropdown lists the key derivation functions the engine accepts, and those the runtime cannot provide are disabled with their reason.
+- The Volume Size step named "drive F:" and "812.44 GB", both invented, on machines that may have no F: drive. It now reports the free space of the destination actually chosen, matched against the real drive rows, says plainly when no destination has been chosen or the drive cannot be matched, and warns when the requested size exceeds the free space available.
+- The wizard's Select File… button now opens the native save dialog and fills in the container path, and a requested size below the engine's 64 MB minimum is refused with a message naming both figures.
+
 ### Corrections to shipped behaviour
 
 - The Volumes table previously displayed four invented containers on every machine. It now reads all twenty-six drive letters from the operating system, and marks a row mounted only when its NT device target belongs to the VeraCrypt driver.
