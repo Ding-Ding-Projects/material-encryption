@@ -2,6 +2,12 @@
 
 ## 0.1.10
 
+### Volume Properties reads the real container
+
+- The Properties destination now takes a container path (typed or chosen through the native picker) and its password, then displays what the engine's own header read returns: location, container file size, volume and data area sizes, cipher, key derivation function, PIM, iteration count, sector size, header version, whether the volume is hidden, and whether the backup header was used.
+- Filesystem label, total, used and free space inside the container are shown when the FAT32 filesystem can be read, and the exact reason is shown when it cannot.
+- Nothing is invented: choosing, reading, a wrong password and an unreadable container each state their real condition, and the password is cleared from renderer state as soon as the reads that need it have finished.
+
 ### Right-click menus close again
 
 - A right-click opened the element menu and nothing dismissed it. `src/renderer/bridge.js` had no outside-click handler at all: its capture-phase `click` listener returned early for anything that was not a locked element, so a click beside the menu left it on screen, and the `Edit this element appearance…` entry dispatched its event without closing. Escape was the only exit. Menus now close on outside press, on losing window focus, on resize, on scrolling the page behind them, on focus moving away, and on activating an entry — and closing returns focus to the control the menu was opened from. Outside dismissal is deliberately limited to menus: the lock wizard holds typed input across four steps and keeps its explicit Cancel and Escape routes.

@@ -122,8 +122,120 @@ html = must(
 html = must(
   html,
   /    const props = \[[\s\S]*?\n    \];\n\n    const favData = \[[\s\S]*?\n    \];/,
-  "    const props = [['Status', 'Open a container to read its real properties.']];\n\n    const favData = [];",
+  '    const props = this.propertyRows();\n\n    const favData = [];',
   'prototype properties and favourites'
+);
+
+// The Properties destination is now driven by the engine's own header read. The
+// user picks a container and supplies its password; nothing is displayed that
+// did not come back from verifyVolume, and the password is dropped as soon as
+// the two reads that need it have finished.
+const propertyReader = [
+  '  async selectPropertiesVolume() {',
+  '    const api = window.materialEncryption;',
+  "    if (!api || typeof api.selectVolume !== 'function') { this.setState({ propsError: 'The volume bridge is unavailable in this build.' }); return; }",
+  '    try {',
+  '      const result = await api.selectVolume();',
+  '      const picked = result && result.ok ? result.value : null;',
+  '      if (picked) this.setState({ propsVolume: picked, propsInfo: null, propsUsage: null, propsUsageError: null, propsError: null });',
+  "      else if (result && result.ok === false) this.setState({ propsError: result.error || 'The container could not be selected.' });",
+  '    } catch (error) { this.setState({ propsError: (error && error.message) || String(error) }); }',
+  '  }',
+  '',
+  '  async readProperties() {',
+  '    const api = window.materialEncryption;',
+  "    if (!api || typeof api.verifyVolume !== 'function') { this.setState({ propsError: 'The volume bridge is unavailable in this build.' }); return; }",
+  '    const volume = (this.state.propsVolume || \'\').trim();',
+  "    if (!volume) { this.setState({ propsError: 'Choose a container first.' }); return; }",
+  '    const password = this.state.propsPassword;',
+  '    const pim = Number(this.state.propsPim) || 0;',
+  '    this.setState({ propsBusy: true, propsError: null, propsInfo: null, propsUsage: null, propsUsageError: null });',
+  '    try {',
+  "      const header = await api.verifyVolume({ volume, password, pim, prf: 'Autodetection', useBackupHeader: false });",
+  "      if (!header || !header.ok) { this.setState({ propsBusy: false, propsPassword: '', propsError: (header && header.error) || 'The container header could not be read.' }); return; }",
+  '      let usage = null, usageError = null;',
+  '      try {',
+  "        const files = await api.listVolumeFiles({ volume, password, pim, prf: 'Autodetection', path: '/' });",
+  '        if (files && files.ok && files.value && files.value.usage) usage = files.value.usage;',
+  "        else usageError = (files && files.error) || 'The filesystem inside the container reported no usage figures.';",
+  '      } catch (error) { usageError = (error && error.message) || String(error); }',
+  "      this.setState({ propsBusy: false, propsPassword: '', propsInfo: header.value, propsUsage: usage, propsUsageError: usageError });",
+  "    } catch (error) { this.setState({ propsBusy: false, propsPassword: '', propsError: (error && error.message) || String(error) }); }",
+  '  }',
+  '',
+  '  propertyRows() {',
+  '    const info = this.state.propsInfo;',
+  '    if (!info) return [];',
+  '    const rows = [',
+  "      ['Location', info.path],",
+  "      ['Container file size', this.formatBytes(info.fileSize) + ' (' + info.fileSize + ' bytes)'],",
+  "      ['Volume size', this.formatBytes(info.volumeSize)],",
+  "      ['Data area size', this.formatBytes(info.dataSize)],",
+  "      ['Encryption algorithm', info.cipher],",
+  "      ['Key derivation function', info.prf],",
+  "      ['PIM', String(info.pim)],",
+  "      ['Iterations', String(info.iterations)],",
+  "      ['Sector size', info.sectorSize + ' bytes'],",
+  "      ['Volume header version', String(info.headerVersion)],",
+  "      ['Hidden volume', info.hidden ? 'Yes' : 'No'],",
+  "      ['Backup header used', info.usedBackupHeader ? 'Yes' : 'No']",
+  '    ];',
+  '    const usage = this.state.propsUsage;',
+  '    if (usage) {',
+  "      rows.push(['Filesystem label', usage.label || '(none)']);",
+  "      rows.push(['Filesystem total', this.formatBytes(usage.totalBytes)]);",
+  "      rows.push(['Filesystem used', this.formatBytes(usage.usedBytes)]);",
+  "      rows.push(['Filesystem free', this.formatBytes(usage.freeBytes)]);",
+  "    } else if (this.state.propsUsageError) rows.push(['Filesystem usage', 'Not read: ' + this.state.propsUsageError]);",
+  '    return rows;',
+  '  }',
+  '',
+  '  openMenu('
+].join('\n');
+html = must(html, '  openMenu(', propertyReader, 'volume property reader');
+html = must(
+  html,
+  '    driveRows: [], drivesError: null, drivesQueriedAt: null,',
+  '    driveRows: [], drivesError: null, drivesQueriedAt: null,\n' +
+  "    propsVolume: '', propsPassword: '', propsPim: '', propsInfo: null, propsUsage: null, propsUsageError: null, propsError: null, propsBusy: false,",
+  'volume property state'
+);
+html = must(
+  html,
+  '      properties: props.map((p, i) => ({',
+  '      propsVolume: s.propsVolume,\n' +
+  '      setPropsVolume: (e) => this.setState({ propsVolume: e.target.value, propsInfo: null, propsUsage: null, propsUsageError: null, propsError: null }),\n' +
+  '      propsPassword: s.propsPassword, setPropsPassword: (e) => this.setState({ propsPassword: e.target.value }),\n' +
+  '      propsPim: s.propsPim, setPropsPim: (e) => this.setState({ propsPim: e.target.value }),\n' +
+  '      browseProperties: () => this.selectPropertiesVolume(),\n' +
+  '      readProperties: () => this.readProperties(),\n' +
+  '      propsStatus: s.propsBusy\n' +
+  "        ? 'Reading the container header…'\n" +
+  '        : (s.propsError\n' +
+  "          ? s.propsError\n" +
+  "          : (props.length ? '' : (s.propsVolume.trim() ? 'Enter the container password, then read its properties.' : 'Choose a container, then enter its password.'))),\n" +
+  '      properties: props.map((p, i) => ({',
+  'volume property bindings'
+);
+html = must(
+  html,
+  '          <sc-if value="{{ isProperties }}" hint-placeholder-val="{{ true }}">\n' +
+  '            <div style="background:var(--s1);border:1px solid var(--outv);border-radius:16px;overflow:hidden">\n' +
+  '              <sc-for list="{{ properties }}" as="p" hint-placeholder-count="14">',
+  '          <sc-if value="{{ isProperties }}" hint-placeholder-val="{{ true }}">\n' +
+  '            <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px">\n' +
+  '              <input value="{{ propsVolume }}" onChange="{{ setPropsVolume }}" placeholder="Select or type a container path" style="flex:1;min-width:260px;background:var(--s1);border:1px solid var(--outv);border-radius:12px;color:var(--on);padding:12px 14px;font-family:Roboto Mono,monospace;outline:none">\n' +
+  '              <button onClick="{{ browseProperties }}" style="padding:11px 20px;border-radius:20px;border:1px solid var(--outv);background:transparent;color:var(--on);cursor:pointer">Browse…</button>\n' +
+  '              <input type="password" value="{{ propsPassword }}" onChange="{{ setPropsPassword }}" placeholder="Password" style="width:200px;background:var(--s1);border:1px solid var(--outv);border-radius:12px;color:var(--on);padding:12px 14px;outline:none">\n' +
+  '              <input value="{{ propsPim }}" onChange="{{ setPropsPim }}" placeholder="PIM" style="width:90px;background:var(--s1);border:1px solid var(--outv);border-radius:12px;color:var(--on);padding:12px 14px;text-align:right;font-family:Roboto Mono,monospace;outline:none">\n' +
+  '              <button onClick="{{ readProperties }}" style="padding:11px 24px;border-radius:20px;border:0;background:var(--p);color:var(--op);font-weight:500;cursor:pointer">Read properties</button>\n' +
+  '            </div>\n' +
+  '            <div style="background:var(--s1);border:1px solid var(--outv);border-radius:16px;overflow:hidden">\n' +
+  '              <sc-if value="{{ propsStatus }}">\n' +
+  '                <div style="padding:18px;color:var(--onv);font:400 13px Roboto,sans-serif">{{ propsStatus }}</div>\n' +
+  '              </sc-if>\n' +
+  '              <sc-for list="{{ properties }}" as="p" hint-placeholder-count="14">',
+  'volume property controls'
 );
 // The prototype only ever labelled its four invented volumes, so every other
 // letter rendered as an em dash. Real letters that are in use have a real type
