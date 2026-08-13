@@ -51,11 +51,23 @@ const NON_SYSTEM_ITERATIONS = 500000;
 const PIM_BASE_ITERATIONS = 15000;
 const PIM_ITERATIONS_PER_UNIT = 1000;
 
+// Node's OpenSSL provides aes-256-xts; the Electron runtime this ships inside
+// uses BoringSSL, which provides no XTS cipher at all. Asking for it there fails
+// with "Unknown cipher", so every AES container would be unopenable in the
+// packaged application while every test passed under Node — which is exactly
+// what happened until an end-to-end run against the built artifact caught it.
+//
+// The decision is made from what the runtime actually reports rather than from
+// which runtime we assume we are in. When the native mode is absent, AES runs
+// through this project's own XTS, which tests/crypto-ciphers.test.mjs proves
+// byte-identical to the native one, so containers stay interchangeable.
+const NATIVE_XTS = crypto.getCiphers().includes('aes-256-xts');
+
 // Only ciphers whose primitives this build can actually perform are offered.
 // A cipher we cannot execute is reported as unavailable rather than listed as
 // if it worked.
 const CIPHERS = Object.freeze({
-  AES: { id: 'AES', label: 'AES', keyBytes: 64, algorithm: 'aes-256-xts', module: aesCipher, available: true },
+  AES: { id: 'AES', label: 'AES', keyBytes: 64, algorithm: NATIVE_XTS ? 'aes-256-xts' : null, module: aesCipher, available: true },
   Serpent: { id: 'Serpent', label: 'Serpent', keyBytes: 64, algorithm: null, module: serpentCipher, available: true },
   Twofish: { id: 'Twofish', label: 'Twofish', keyBytes: 64, algorithm: null, module: twofishCipher, available: true },
   Camellia: { id: 'Camellia', label: 'Camellia', keyBytes: 64, algorithm: null, module: null, available: false, reason: 'Camellia has not been ported yet, so this build cannot read or write a Camellia volume.' },

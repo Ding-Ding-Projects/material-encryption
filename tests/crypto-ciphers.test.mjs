@@ -8,6 +8,7 @@ const serpent = require('../src/main/crypto/serpent.cjs');
 const twofish = require('../src/main/crypto/twofish.cjs');
 const aes = require('../src/main/crypto/aes.cjs');
 const xts = require('../src/main/crypto/xts.cjs');
+const fmt = require('../src/main/volume-format.cjs');
 
 // The ECB vectors below are the ones in the VeraCrypt source tree itself
 // (src/Common/Tests.c at tag VeraCrypt_1.26.29). Matching them is what makes
@@ -96,4 +97,43 @@ test('the same plaintext encrypts differently under different data units', () =>
 test('an XTS key whose halves match is refused', () => {
   const half = crypto.randomBytes(32);
   assert.throws(() => xts.createXts(serpent, Buffer.concat([half, half])), /halves/);
+});
+
+// The packaged application runs on Electron's BoringSSL, which provides no XTS
+// cipher at all — asking for aes-256-xts there fails with "Unknown cipher".
+// Under Node's OpenSSL it exists, so a suite that only ever runs under Node
+// cannot tell the two apart, and every AES container silently became unopenable
+// in the shipped build while all of these tests passed. This asserts the
+// fallback path produces the same bytes, so either runtime reads the other's
+// containers.
+test('AES falls back to the ported XTS when the runtime has no native XTS, byte for byte', () => {
+  const key = Buffer.concat([crypto.randomBytes(32), crypto.randomBytes(32)]);
+  const data = crypto.randomBytes(1024);
+
+  for (const dataUnitNumber of [0, 5, 4096]) {
+    const tweak = Buffer.alloc(16);
+    tweak.writeBigUInt64LE(BigInt(dataUnitNumber), 0);
+    const engine = crypto.createCipheriv('aes-256-xts', key, tweak);
+    const native = Buffer.concat([engine.update(data), engine.final()]);
+
+    const mode = xts.createXts(aes, key);
+    const ported = mode.encrypt(dataUnitNumber, data);
+    mode.destroy();
+
+    assert.ok(ported.equals(native), `data unit ${dataUnitNumber} must match the native mode exactly`);
+  }
+});
+
+test('the AES cipher entry only claims a native algorithm the runtime actually has', () => {
+  const nativeAvailable = crypto.getCiphers().includes('aes-256-xts');
+  const aesEntry = fmt.CIPHERS.AES;
+  assert.equal(aesEntry.available, true, 'AES must always be available');
+  if (nativeAvailable) {
+    assert.equal(aesEntry.algorithm, 'aes-256-xts');
+  } else {
+    assert.equal(aesEntry.algorithm, null, 'without native XTS the entry must fall back rather than name a cipher that does not exist');
+  }
+  // Either way a block-cipher module must back it, or the fallback has nothing
+  // to fall back to.
+  assert.equal(typeof aesEntry.module?.createCipher, 'function');
 });
