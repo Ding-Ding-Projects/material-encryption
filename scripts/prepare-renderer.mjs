@@ -137,6 +137,329 @@ html = must(
 html = must(html, /    const hist = \[[\s\S]*?\n    \];/, '    const hist = [];', 'prototype history');
 html = must(html, /      notifications: \[[\s\S]*?\n      \],\n      toasts:/, '      notifications: [],\n      toasts:', 'prototype notifications');
 
+// ---------------------------------------------------------------------------
+// Volume creation wizard.
+//
+// The prototype's seventh step was a picture of a formatter: a constant 63%, a
+// constant 148 MB/s, a constant four-group entropy pool, and a Next button that
+// asked VeraCrypt to open its own wizard. None of it created anything. Every
+// number on that step is now measured, and the button calls the container
+// engine this application already ships.
+
+const wizardState = [
+  "    volumeType: 'standard', favIndex: 0, favLabel: 'Archive 2026', flags: {},",
+  "    volumeCaps: null, volumeCapsError: '', wizardBusy: false, wizardError: '', wizardResult: null,",
+  "    wizardPhase: '', wizardDone: 0, wizardTotal: 0, wizardStartedAt: 0, wizardElapsedMs: 0,",
+  "    entropyPool: '', entropyMouseMixes: 0,"
+].join('\n');
+html = must(
+  html,
+  "    volumeType: 'standard', favIndex: 0, favLabel: 'Archive 2026', flags: {},",
+  wizardState,
+  'wizard state'
+);
+
+// The cipher and hash inventories are read from the engine rather than listed
+// here, so a cipher this build cannot write is never offered as though it could.
+const wizardMethods = [
+  '  loadVolumeCapabilities() {',
+  '    const api = window.materialEncryption;',
+  "    if (!api || typeof api.volumeCapabilities !== 'function') { this.setState({ volumeCapsError: 'The volume bridge is unavailable in this build.' }); return; }",
+  '    Promise.resolve(api.volumeCapabilities()).then((result) => {',
+  "      if (result && result.ok) this.setState({ volumeCaps: result.value, volumeCapsError: '' });",
+  "      else this.setState({ volumeCapsError: (result && result.error) || 'The cipher and hash inventory could not be read.' });",
+  '    }).catch((error) => this.setState({ volumeCapsError: (error && error.message) || String(error) }));',
+  '  }',
+  '',
+  '  ddDisabledReasons() {',
+  '    const caps = this.state.volumeCaps;',
+  '    const reasons = { cipher: {}, hash: {} };',
+  '    if (caps) {',
+  "      (caps.ciphers || []).forEach((c) => { if (!c.available) reasons.cipher[c.id] = c.reason || 'Unavailable in this build.'; });",
+  "      (caps.prfs || []).forEach((p) => { if (!p.available) reasons.hash[p.id] = p.reason || 'Unavailable in this build.'; });",
+  '    }',
+  '    return reasons;',
+  '  }',
+  '',
+  '  // The displayed pool is real: eight bytes drawn from the platform CSPRNG on',
+  '  // every stir, xored with the pointer coordinates and arrival time of the',
+  '  // movement that triggered it. It seeds nothing — the master key is drawn in',
+  '  // the main process — and the copy beside it says exactly that.',
+  '  stirEntropy(mouseEvent) {',
+  '    if (!window.crypto || !window.crypto.getRandomValues) return;',
+  '    const now = Date.now();',
+  '    if (mouseEvent && this.lastEntropyMix && now - this.lastEntropyMix < 150) return;',
+  '    this.lastEntropyMix = now;',
+  '    const bytes = new Uint8Array(8);',
+  '    window.crypto.getRandomValues(bytes);',
+  '    if (mouseEvent) {',
+  '      const mix = [mouseEvent.clientX | 0, mouseEvent.clientY | 0, Math.floor(performance.now())];',
+  '      for (let i = 0; i < bytes.length; i += 1) bytes[i] ^= (mix[i % mix.length] >>> ((i % 4) * 8)) & 0xff;',
+  '    }',
+  "    const hex = Array.from(bytes).map((b) => b.toString(16).padStart(2, '0').toUpperCase()).join('');",
+  "    this.setState((st) => ({ entropyPool: hex.replace(/(.{4})(?=.)/g, '$1 '), entropyMouseMixes: st.entropyMouseMixes + (mouseEvent ? 1 : 0) }));",
+  '  }',
+  '',
+  '  wizardSizeBytes() {',
+  '    const units = { KB: 1024, MB: 1024 ** 2, GB: 1024 ** 3, TB: 1024 ** 4 };',
+  '    const amount = Number(String(this.state.volumeSize).trim());',
+  '    if (!Number.isFinite(amount) || amount <= 0) return NaN;',
+  '    const bytes = Math.floor(amount * (units[this.state.sizeUnit] || 1));',
+  '    return bytes - (bytes % 512);',
+  '  }',
+  '',
+  '  async createVolumeNow() {',
+  '    if (this.state.wizardBusy) return;',
+  '    const api = window.materialEncryption;',
+  "    if (!api || typeof api.createVolume !== 'function') { this.setState({ wizardError: 'The volume bridge is unavailable in this build.' }); return; }",
+  "    const volume = String(this.state.volumePath || '').trim();",
+  "    if (!volume) { this.setState({ wizardError: 'Choose a container path on the Volume Location step first.' }); return; }",
+  "    if (!this.state.newPassword) { this.setState({ wizardError: 'Enter a password on the Volume Password step first.' }); return; }",
+  '    const sizeBytes = this.wizardSizeBytes();',
+  "    if (!Number.isFinite(sizeBytes)) { this.setState({ wizardError: 'Enter the volume size as a number.' }); return; }",
+  '    const minimum = this.state.volumeCaps ? this.state.volumeCaps.minimumBytes : 64 * 1024 * 1024;',
+  "    if (sizeBytes < minimum) { this.setState({ wizardError: 'This build needs at least ' + this.formatBytes(minimum) + ' for a container, and ' + this.formatBytes(sizeBytes) + ' is smaller than that.' }); return; }",
+  "    this.setState({ wizardBusy: true, wizardError: '', wizardResult: null, wizardPhase: 'starting', wizardDone: 0, wizardTotal: 0, wizardStartedAt: Date.now(), wizardElapsedMs: 0, wizardStep: 6 });",
+  '    try {',
+  '      const result = await api.createVolume({',
+  '        volume,',
+  '        password: this.state.newPassword,',
+  '        sizeBytes,',
+  '        cipher: this.state.dd.cipher,',
+  '        prf: this.state.dd.hash,',
+  '        pim: 0,',
+  "        volumeLabel: 'ENCRYPTED',",
+  '        filesystem: this.state.dd.filesystem,',
+  '        overwrite: false',
+  '      });',
+  '      if (result && result.ok) {',
+  "        this.setState({ wizardResult: result.value, wizardPhase: 'done' });",
+  "        this.toast('Volume created', result.value.path + ' · ' + this.formatBytes(result.value.sizeBytes));",
+  '      } else {',
+  "        this.setState({ wizardError: (result && result.error) || 'The container could not be created.', wizardPhase: '' });",
+  '      }',
+  '    } catch (error) {',
+  "      this.setState({ wizardError: (error && error.message) || String(error), wizardPhase: '' });",
+  '    }',
+  '    this.setState({ wizardBusy: false });',
+  '  }',
+  '',
+  '  ddOptions() {',
+  '    return {'
+].join('\n');
+html = must(html, '  ddOptions() {\n    return {', wizardMethods, 'wizard engine methods');
+
+html = must(
+  html,
+  '    this.loadDrives();\n    this.driveTimer = setInterval(() => this.loadDrives(), 5000);\n  }',
+  [
+    '    this.loadDrives();',
+    '    this.driveTimer = setInterval(() => this.loadDrives(), 5000);',
+    '    this.loadVolumeCapabilities();',
+    '    this.stirEntropy(null);',
+    '    this.entropyTimer = setInterval(() => this.stirEntropy(null), 1000);',
+    '    this.entropyMouseHandler = (event) => this.stirEntropy(event);',
+    "    window.addEventListener('mousemove', this.entropyMouseHandler);",
+    "    this.volumeProgressOff = window.materialEncryption && typeof window.materialEncryption.onVolumeCreateProgress === 'function'",
+    '      ? window.materialEncryption.onVolumeCreateProgress((progress) => this.setState((st) => ({',
+    "          wizardPhase: progress.phase, wizardDone: Number(progress.done) || 0, wizardTotal: Number(progress.total) || 0,",
+    '          wizardElapsedMs: st.wizardStartedAt ? Date.now() - st.wizardStartedAt : 0',
+    '        })))',
+    '      : null;',
+    '  }'
+  ].join('\n'),
+  'wizard mount hooks'
+);
+html = must(
+  html,
+  'clearInterval(this.driveTimer); }',
+  "clearInterval(this.driveTimer); clearInterval(this.entropyTimer); if (this.entropyMouseHandler) window.removeEventListener('mousemove', this.entropyMouseHandler); if (this.volumeProgressOff) this.volumeProgressOff(); }",
+  'wizard teardown'
+);
+
+// This build writes FAT32 or leaves the container unformatted; there is no NTFS,
+// exFAT or ReFS writer behind those prototype entries.
+html = must(
+  html,
+  "      cipher: ['AES', 'Serpent', 'Twofish', 'Camellia', 'Kuznyechik', 'AES(Twofish)', 'AES(Twofish(Serpent))', 'Serpent(AES)', 'Serpent(Twofish(AES))', 'Twofish(Serpent)', 'Camellia(Kuznyechik)', 'Kuznyechik(Twofish)'],\n" +
+  "      hash: ['SHA-512', 'SHA-256', 'Whirlpool', 'BLAKE2s-256', 'Streebog'],\n" +
+  "      filesystem: ['NTFS', 'exFAT', 'FAT', 'ReFS', 'None'],",
+  "      cipher: this.state.volumeCaps ? this.state.volumeCaps.ciphers.map((c) => c.id) : ['AES', 'Serpent', 'Twofish'],\n" +
+  "      hash: this.state.volumeCaps ? this.state.volumeCaps.prfs.map((p) => p.id) : ['HMAC-SHA-512', 'HMAC-SHA-256'],\n" +
+  "      filesystem: ['FAT32', 'None'],",
+  'wizard engine-backed dropdown options'
+);
+html = must(
+  html,
+  "      filesystem: 'NTFS', cluster: 'Default',",
+  "      filesystem: 'FAT32', cluster: 'Default',",
+  'wizard filesystem default'
+);
+html = must(
+  html,
+  "cipher: 'AES', hash: 'SHA-512',",
+  "cipher: 'AES', hash: 'HMAC-SHA-512',",
+  'wizard hash default'
+);
+
+// An unavailable cipher stays visible with the engine's own reason beside it,
+// and does nothing when chosen, rather than being offered and then silently
+// substituted at creation time.
+html = must(
+  html,
+  "      ddVals['dd_' + id + '_open'] = (e) => this.openMenu(e, this.ddTitles()[id], opts.map(o => [\n" +
+  "        o + (s.dd[id] === o ? '  ✓' : ''),\n" +
+  '        () => {',
+  "      const ddReasons = this.ddDisabledReasons()[id] || {};\n" +
+  "      ddVals['dd_' + id + '_open'] = (e) => this.openMenu(e, this.ddTitles()[id], opts.map(o => [\n" +
+  "        o + (s.dd[id] === o ? '  ✓' : ''),\n" +
+  '        ddReasons[o] ? null : () => {',
+  'wizard unavailable dropdown entries'
+);
+html = must(
+  html,
+  "          if (id === 'logoFit') this.previewLogoOptions({ ...this.state, logoFit: o });\n        }\n      ]));",
+  "          if (id === 'logoFit') this.previewLogoOptions({ ...this.state, logoFit: o });\n        },\n        ddReasons[o] || ''\n      ]));",
+  'wizard unavailable dropdown reasons'
+);
+
+// Every figure on the format step is derived from the engine's own progress
+// events. A value the engine has not reported yet says so instead of guessing.
+html = must(
+  html,
+  '    const themeVars = s.theme === ',
+  [
+    '    const wizTotal = Number(s.wizardTotal) || 0;',
+    '    const wizDone = Number(s.wizardDone) || 0;',
+    '    const wizPct = wizTotal > 0 ? Math.min(100, Math.round((wizDone / wizTotal) * 100)) : null;',
+    '    const wizElapsedMs = Math.max(0, Number(s.wizardElapsedMs) || 0);',
+    "    const wizRate = s.wizardPhase === 'random' && wizDone > 0 && wizElapsedMs > 250 ? wizDone / (wizElapsedMs / 1000) : null;",
+    '    const wizEta = wizRate && wizTotal > wizDone ? Math.round((wizTotal - wizDone) / wizRate) : null;',
+    "    const wizClock = (total) => String(Math.floor(total / 60)).padStart(2, '0') + ':' + String(total % 60).padStart(2, '0');",
+    '    const wizStatus = s.wizardResult',
+    "      ? 'Finished'",
+    '      : !s.wizardBusy',
+    "        ? 'Not started'",
+    "        : s.wizardPhase === 'random'",
+    "          ? (wizPct === null ? 'Writing random data · no progress reported yet' : 'Writing random data ' + wizPct + '%')",
+    "          : s.wizardPhase === 'filesystem'",
+    "            ? 'Writing the FAT32 filesystem'",
+    "            : 'Starting · no progress reported yet';",
+    '    const wizRateText = s.wizardResult',
+    "      ? 'Elapsed ' + wizClock(Math.round(wizElapsedMs / 1000))",
+    '      : !s.wizardBusy',
+    "        ? 'Not started'",
+    '        : wizRate === null',
+    "          ? 'Speed not measurable yet'",
+    "          : this.formatBytes(wizRate) + '/s · Left ' + (wizEta === null ? 'not known yet' : wizClock(wizEta));",
+    '    const wizBarPct = s.wizardResult ? 100 : (wizPct === null ? 0 : wizPct);',
+    '',
+    '    const themeVars = s.theme === '
+  ].join('\n'),
+  'wizard measured progress'
+);
+html = must(
+  html,
+  "      randomPool: '8F2A C41D 9BE0 3E77',\n" +
+  "      formatPct: 63, formatBarStyle: 'height:100%;width:63%;background:var(--p);border-radius:4px',",
+  [
+    "      randomPool: s.entropyPool || 'Gathering…',",
+    "      entropyCopy: 'The Random Pool shows eight bytes drawn from this machine\\u2019s cryptographic random source, redrawn every second and mixed with each pointer movement over this window (' + s.entropyMouseMixes + ' movements mixed so far). Moving the mouse changes the pool you can see; the container\\u2019s master key is drawn separately by the operating system when creation runs, so it does not depend on this.',",
+    '      formatStatus: wizStatus,',
+    '      formatRate: wizRateText,',
+    "      formatBarStyle: 'height:100%;width:' + wizBarPct + '%;background:var(--p);border-radius:4px',",
+    '      wizardBusy: s.wizardBusy,',
+    "      wizardNextLabel: s.wizardStep < 6 ? 'Next' : (s.wizardBusy ? 'Creating…' : 'Create'),",
+    "      wizardNextStyle: 'padding:11px 30px;border-radius:20px;border:0;background:var(--p);color:var(--op);font-weight:500;opacity:' + (s.wizardBusy ? '.6' : '1') + ';cursor:' + (s.wizardBusy ? 'default' : 'pointer'),",
+    '      wizardMessage: s.wizardError',
+    "        ? 'The container was not created: ' + s.wizardError",
+    '        : s.wizardResult',
+    "          ? 'Created ' + s.wizardResult.path + ' · ' + this.formatBytes(s.wizardResult.sizeBytes) + ' · ' + s.wizardResult.cipher + ' · ' + s.wizardResult.prf + ' · ' + (s.wizardResult.filesystem === 'None' ? 'unformatted' : s.wizardResult.filesystem)",
+    "          : s.volumeCapsError ? 'The cipher and hash inventory could not be read: ' + s.volumeCapsError : '',",
+    '      selectNewVolumeTargetPath: async () => {',
+    '        const result = await window.materialEncryption.selectNewVolumeTarget();',
+    '        if (result && result.ok && result.value) this.setState({ volumePath: result.value });',
+    '      },'
+  ].join('\n'),
+  'wizard measured render values'
+);
+html = must(
+  html,
+  '        if (s.wizardStep < 6) this.setState({ wizardStep: s.wizardStep + 1 });\n' +
+  '        else if (window.materialEncryption) window.materialEncryption.openNative(\'format\');\n' +
+  "        else this.toast('VeraCrypt required', 'Install VeraCrypt to launch its native volume creation wizard.');",
+  '        if (s.wizardStep < 6) this.setState({ wizardStep: s.wizardStep + 1 });\n        else this.createVolumeNow();',
+  'wizard create action'
+);
+
+html = must(
+  html,
+  '<span>Formatting {{ formatPct }}%</span><span style="font-family:Roboto Mono,monospace">Speed 148 MB/s · Left 00:02:14</span>',
+  '<span>{{ formatStatus }}</span><span style="font-family:Roboto Mono,monospace">{{ formatRate }}</span>',
+  'wizard progress readout'
+);
+html = must(
+  html,
+  '<p style="margin:0;color:var(--onv);font-size:13px;text-wrap:pretty">Move your mouse randomly within this window. The longer you move it, the better the cryptographic strength of the keys.</p>',
+  '<p style="margin:0;color:var(--onv);font-size:13px;text-wrap:pretty">{{ entropyCopy }}</p>\n' +
+  '                    <sc-if value="{{ wizardMessage }}">\n' +
+  '                      <p style="margin:0;padding:14px 16px;border-radius:14px;background:var(--s1);border:1px solid var(--outv);color:var(--on);font-size:13px;text-wrap:pretty">{{ wizardMessage }}</p>\n' +
+  '                    </sc-if>',
+  'wizard entropy copy and outcome'
+);
+html = must(
+  html,
+  '<button onClick="{{ wizardNext }}" style="padding:11px 30px;border-radius:20px;border:0;background:var(--p);color:var(--op);font-weight:500;cursor:pointer">Next</button>',
+  '<button onClick="{{ wizardNext }}" disabled="{{ wizardBusy }}" style="{{ wizardNextStyle }}">{{ wizardNextLabel }}</button>',
+  'wizard create button'
+);
+// The prototype's size step named drive F: and 812.44 GB, both invented, on a
+// machine that may have no F: at all. The figure now comes from the destination
+// the user actually chose, matched against the real drive rows.
+html = must(
+  html,
+  '<p style="margin:0;color:var(--onv);font-size:13px">Free space on drive F: is 812.44 GB.</p>',
+  '<p style="margin:0;color:var(--onv);font-size:13px">{{ destinationSpace }}</p>',
+  'wizard destination free space readout'
+);
+html = must(
+  html,
+  '      volumeSize: s.volumeSize, setVolumeSize: (e) => this.setState({ volumeSize: e.target.value }),',
+  [
+    '      volumeSize: s.volumeSize, setVolumeSize: (e) => this.setState({ volumeSize: e.target.value }),',
+    '      destinationSpace: (() => {',
+    "        const target = String(s.volumePath || '').trim();",
+    "        if (!target) return 'Choose a destination on the Volume Location step to see its free space.';",
+    '        const letter = /^([A-Za-z]):/.exec(target);',
+    "        if (!letter) return 'The free space on ' + target + ' could not be matched to a drive letter.';",
+    "        const row = (Array.isArray(s.driveRows) ? s.driveRows : []).find((d) => d.letter === letter[1].toUpperCase() + ':');",
+    "        if (!row) return 'Drive ' + letter[1].toUpperCase() + ': was not reported by this machine, so its free space is not known.';",
+    "        if (!Number.isFinite(row.freeBytes)) return 'Drive ' + row.letter + ' did not report its free space.';",
+    '        const wanted = this.wizardSizeBytes();',
+    "        const base = 'Free space on drive ' + row.letter + ' is ' + this.formatBytes(row.freeBytes) + '.';",
+    '        if (Number.isFinite(wanted) && wanted > row.freeBytes) {',
+    "          return base + ' That is less than the ' + this.formatBytes(wanted) + ' container requested, so creation would run out of space.';",
+    '        }',
+    '        return base;',
+    '      })(),'
+  ].join('\n'),
+  'wizard destination free space'
+);
+html = must(
+  html,
+  '<button style="padding:11px 20px;border-radius:20px;border:1px solid var(--outv);background:transparent;color:var(--on);cursor:pointer">Select File…</button>',
+  '<button onClick="{{ selectNewVolumeTargetPath }}" style="padding:11px 20px;border-radius:20px;border:1px solid var(--outv);background:transparent;color:var(--on);cursor:pointer">Select File…</button>',
+  'wizard container path picker'
+);
+// The seventh step's own copy still promised the prototype's mouse-driven key
+// gathering, which this engine does not do.
+html = must(
+  html,
+  "      'Move the mouse to gather entropy, then the volume is written and formatted.'",
+  "      'The container is filled with random data, formatted, and both headers are written. Progress below is reported by the engine as it writes.'",
+  'wizard format step copy'
+);
+
 html = html
   .replace('<script src="./support.js"></script>', '<meta http-equiv="Content-Security-Policy" content="default-src \'self\'; script-src \'self\' \'unsafe-eval\'; style-src \'self\' \'unsafe-inline\'; img-src \'self\' material-logo: data:; connect-src \'none\'; font-src \'self\'; object-src \'none\'; base-uri \'none\'; form-action \'none\'"><script src="./vendor/react.production.min.js"></script><script src="./vendor/react-dom.production.min.js"></script><script src="./support.js"></script><script src="./bridge.js" defer></script>')
   .replace(/<link rel="preconnect"[^>]*>/g, '')
