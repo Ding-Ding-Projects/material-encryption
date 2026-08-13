@@ -2,9 +2,13 @@
 
 ## Current scope
 
-Material Encryption is an independent Windows Electron interface generated from the full design export in `design/`. Its main-process adapter invokes a separately installed VeraCrypt executable through validated, allowlisted operations. VeraCrypt owns password entry and all cryptography.
+Material Encryption is an independent Windows Electron interface generated from the full design export in `design/`.
 
-Package 0.1.9 expands the application to 14 destinations. It adds a categorized local File Converter with PDF tooling and a persistent bounded-concurrency queue, plus Ollama Studio for local runtime discovery, official model/tag inventory, evidence-based PC fit, model downloads, chat, reviewed harness profiles, configuration snapshots, rollback, and restore.
+As of 0.1.10 the application performs its own cryptography. `src/main/volume-format.cjs` and `src/main/volume-engine.cjs` implement the VeraCrypt volume header and data area directly, `src/main/crypto/` holds the ported Serpent and Twofish ciphers plus an XTS implementation, and `src/main/fat32.cjs` reads and writes the filesystem inside a container. Creating, opening, verifying, re-keying, repairing and browsing a container require nothing to be installed.
+
+One capability is not implemented in user space: assigning a drive letter needs a kernel-mode filesystem driver, and Windows will not load an unsigned one. `scripts/build-driver.ps1` builds that driver from the VeraCrypt source and verifies the artifact, but loading it requires the machine's owner to disable driver signature enforcement themselves. The application detects an installed VeraCrypt for mounting and says plainly when it is absent; it never installs anything.
+
+Package 0.1.9 expanded the application to 14 destinations. It adds a categorized local File Converter with PDF tooling and a persistent bounded-concurrency queue, plus Ollama Studio for local runtime discovery, official model/tag inventory, evidence-based PC fit, model downloads, chat, reviewed harness profiles, configuration snapshots, rollback, and restore.
 
 ## Implemented source inventory
 

@@ -20,7 +20,7 @@
     "test:security": "node scripts/verify-security-contract.mjs",
     "test:workflow": "node scripts/verify-workflow-inventory.mjs",
     "test:package": "node scripts/verify-package-manifest.mjs",
-    "test:all": "npm run test:brand && npm run test:design && npm run test:security && npm run test:workflow && npm run test:package && npm test",
+    "test:all": "npm run test:brand && npm run test:design && npm run test:security && npm run test:workflow && npm run test:package && npm run test:inventory && npm test",
     "count:lines": "node scripts/count-lines.mjs",
     "capture:runtime": "node scripts/capture-runtime.mjs",
     "capture:matrix": "node scripts/capture-matrix.mjs",
@@ -28,6 +28,7 @@
     "dist": "npm run test:brand && npm run prepare:renderer && npm run dist:unsigned",
     "dist:unsigned": "electron-builder --win squirrel --x64",
     "ensure:electron": "node scripts/ensure-electron-binary.mjs",
+    "test:inventory": "node scripts/verify-suite-inventory.mjs",
     "build:driver": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/build-driver.ps1"
   },
   "dependencies": {

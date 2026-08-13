@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.1.10
+
+### Cryptography is now performed by this application
+
+- Added `src/main/volume-format.cjs` and `src/main/volume-engine.cjs`, which implement the VeraCrypt volume header directly: PBKDF2 header keys, XTS, both CRC-32 fields, the primary and backup headers, and the documented non-system iteration rules. Header offsets and iteration counts were checked against the upstream source at tag `VeraCrypt_1.26.29` rather than from memory.
+- Creating, opening, verifying, re-keying, backing up and restoring a container no longer involve VeraCrypt or any other external program.
+- A new container is formatted FAT32 as it is created, so it is usable immediately rather than requiring a separate format pass.
+
+### Ported ciphers
+
+- Added `src/main/crypto/serpent.cjs` and `src/main/crypto/twofish.cjs`, ported from the VeraCrypt source tree. Both reproduce that tree's own published ECB test vectors exactly, which is what makes containers written here readable elsewhere.
+- Added `src/main/crypto/xts.cjs`, an XTS implementation for ciphers the platform does not provide. It is verified byte-identical to the platform's native AES-XTS across five data unit numbers.
+- Camellia and Kuznyechik are not ported and are reported by name as unavailable. They are never silently substituted with AES.
+
+### Files inside a container, without a drive letter
+
+- Added `src/main/fat32.cjs`: listing, reading, writing, extracting and deleting files, and creating folders, through a sector device that decrypts on read and re-encrypts on write. No drive letter, no kernel driver, and no external program is involved.
+
+### Kernel driver built from source
+
+- Added `scripts/build-driver.ps1`, which goes from a bare checkout to a verified `veracrypt.sys` and asserts the artifact it produced: x64, native subsystem, imports `ntoskrnl.exe`, and unsigned. Nothing signs, test-signs, or requests a certificate.
+- Loading that driver requires the machine's owner to disable Windows driver signature enforcement themselves. This project does not do that and does not ask for it.
+
+### Corrections to shipped behaviour
+
+- The Volumes table previously displayed four invented containers on every machine. It now reads all twenty-six drive letters from the operating system, and marks a row mounted only when its NT device target belongs to the VeraCrypt driver.
+- `scripts/prepare-renderer.mjs` transforms were written against LF and silently matched nothing on a CRLF checkout, so the build succeeded while shipping the prototype's data. The source is normalised on read, every required transform now fails the build when it changes nothing, and a final sweep refuses to emit prototype paths.
+- The drive table now shows a loading line while the query runs and the real failure text when it fails, instead of an empty header.
+- Drive results are cached in the main process, taking a repeat query from 549 ms to 0 ms and stopping the poll spawning a PowerShell process every five seconds.
+- The application relaunches itself elevated once per start, because the driver ignores unelevated callers; declining the prompt keeps it running rather than exiting.
+- Added `scripts/ensure-electron-binary.mjs`, because npm can leave the electron package installed with no executable while electron's own installer exits 0 after failing.
+- Removed the VeraCrypt download, extraction and winget-install machinery. Nothing is installed on the user's behalf.
+
+### Verification
+
+- `npm test` is green with **81/81** passing tests, including the volume engine, the ported ciphers against upstream vectors, and the FAT32 layer.
+- `npm run test:all` is green across brand, design coverage, security, workflow and packaging guards.
+- The 36-state capture matrix was regenerated from the packaged build at the released commit.
+
 ## 0.1.9
 
 ### Verification
