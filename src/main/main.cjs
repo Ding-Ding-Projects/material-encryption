@@ -10,6 +10,7 @@ const ollama = require('./ollama-manager.cjs');
 const logos = require('./logo-service.cjs');
 const elevation = require('./elevation.cjs');
 const engine = require('./volume-engine.cjs');
+const benchmark = require('./benchmark.cjs');
 
 // Volume operations need administrator rights, so relaunch elevated once per
 // launch. Declining the prompt keeps the app running unelevated rather than
@@ -132,7 +133,6 @@ app.whenReady().then(() => {
   createWindow();
 
   register('vc:status', () => vc.getStatus());
-  register('vc:install', () => vc.install());
 
   // Container operations performed by this application's own engine. No
   // VeraCrypt process is involved in any of these.
@@ -249,7 +249,6 @@ app.whenReady().then(() => {
     const result = await dialog.showSaveDialog(mainWindow, { title: 'Create a new encrypted container', defaultPath: 'container.hc', filters: [{ name: 'Encrypted container', extensions: ['hc'] }] });
     return result.canceled || !result.filePath ? null : result.filePath;
   });
-  register('vc:install-status', () => vc.installStatus());
   register('vc:drives', () => vc.listDrives());
   register('app:elevated', () => ({ elevated: elevation.isElevated(), relaunchAttempted: elevation.alreadyRelaunched() }));
   register('vc:mount', (value) => {
@@ -271,6 +270,9 @@ app.whenReady().then(() => {
     return vc.unmountAll({ force: boolean(payload.force, 'force') });
   });
   register('vc:wipe-cache', () => vc.wipeCache());
+  // Real measured cipher throughput. Bounded buffer and iteration count, so the
+  // worst case is a short pause rather than a hung window.
+  register('tools:benchmark', () => benchmark.runBenchmark());
   register('vc:auto-mount-devices', () => vc.autoMountDevices());
   register('vc:open-native', (value) => vc.openNative(boundedText(record(value).surface, 'Surface', 32)));
 
