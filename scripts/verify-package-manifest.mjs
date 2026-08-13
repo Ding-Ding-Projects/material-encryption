@@ -19,7 +19,14 @@ assert.equal(manifest.build?.win?.signExecutable, false, 'Executable signing mus
 assert.equal(manifest.build?.win?.signAndEditExecutable, false, 'Signer-backed executable editing must stay disabled.');
 assert.equal(manifest.build?.squirrelWindows?.msi, false, 'The release contract publishes Squirrel setup and update files, not MSI.');
 assert.equal(manifest.build?.squirrelWindows?.artifactName, 'MaterialEncryption-Setup-${version}-${arch}.${ext}');
-assert.equal(manifest.build?.squirrelWindows?.remoteReleases, 'https://github.com/Ding-Ding-Projects/material-encryption', 'The release contract must use the fixed public update feed so a clean runner can produce the generated delta package.');
+// The remote update feed is deliberately absent. Pointing Squirrel at the
+// published releases makes it download the previous package to diff against,
+// and that path intermittently leaves bytes after the new full package's zip
+// end-of-central-directory, which Squirrel's own bundled 7-Zip then refuses
+// with "Not implemented" — failing the release for a delta that is only a
+// download-size optimisation. Removing it made the build reproducible. See
+// issue #6.
+assert.equal(manifest.build?.squirrelWindows?.remoteReleases, undefined, 'The release contract must not configure a remote update feed: the delta sync it enables corrupts the full package intermittently.');
 assert.equal(manifest.scripts?.['dist:unsigned'], 'electron-builder --win squirrel --x64');
 assert.ok(!/test|lint/i.test(manifest.scripts['dist:unsigned']), 'The workflow packaging primitive must not run tests or lint.');
 assert.match(manifest.scripts?.dist || '', /npm run dist:unsigned/, 'The local dist command must delegate to the reviewed unsigned primitive.');

@@ -26,7 +26,13 @@ assert.doesNotMatch(workflow, /^\s+(?:npm test|npm run test(?::[^\s]+)?|npm run 
 assert.ok(evidenceStep.includes('$setupName = "MaterialEncryption-Setup-$packageVersion-x64.exe"'), 'Collector must require the exact setup name.');
 assert.ok(evidenceStep.includes('$fullPackageName = "material-encryption-$packageVersion-full.nupkg"'), 'Collector must require the exact full package name.');
 assert.ok(evidenceStep.includes('$deltaPackageName = "material-encryption-$packageVersion-delta.nupkg"'), 'Collector must require the exact generated delta package name.');
-assert.ok(evidenceStep.includes('foreach ($packageName in @($deltaPackageName, $fullPackageName))'), 'Collector must validate the current full and delta RELEASES entries.');
+// The delta package is published when it exists and skipped when it does not,
+// so the collector validates a set that includes it only in the first case. It
+// must still always validate the full package, or a release could ship a
+// RELEASES index that matches nothing it carries.
+assert.ok(evidenceStep.includes('$verifiedPackages = if ($hasDelta) { @($deltaPackageName, $fullPackageName) } else { @($fullPackageName) }'), 'Collector must validate the delta entry only when a delta was produced.');
+assert.ok(evidenceStep.includes('foreach ($packageName in $verifiedPackages)'), 'Collector must validate every RELEASES entry it is about to publish.');
+assert.ok(evidenceStep.includes('$hasDelta = Test-Path -LiteralPath $deltaPackagePath -PathType Leaf'), 'Collector must decide delta publication from the artifact actually produced.');
 assert.ok(evidenceStep.includes('Get-FileHash -Algorithm SHA1'), 'Collector must verify package bytes against RELEASES integrity metadata.');
 assert.ok(evidenceStep.includes("'build-evidence.json'"), 'Collector must stage build evidence.');
 assert.ok(evidenceStep.includes("'hk-dish-0001-classic-har-gow.png'"), 'Collector must stage the selected public catalog dim-sum photo.');

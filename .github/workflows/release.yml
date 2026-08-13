@@ -64,13 +64,22 @@ jobs:
           $releaseIndex = Join-Path $artifactDirectory 'RELEASES'
           $fullPackagePath = Join-Path $artifactDirectory $fullPackageName
           $deltaPackagePath = Join-Path $artifactDirectory $deltaPackageName
-          foreach ($requiredPath in @($setupPath, $releaseIndex, $fullPackagePath, $deltaPackagePath)) {
+          foreach ($requiredPath in @($setupPath, $releaseIndex, $fullPackagePath)) {
             if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) { throw "Required Squirrel.Windows artifact was not produced: $requiredPath" }
           }
+          # The delta package is published when Squirrel produced one. It is not
+          # required: generating it needs the previous release's package, and that
+          # sync intermittently leaves a tail after the full package's zip
+          # end-of-central-directory which Squirrel's own 7-Zip then rejects. A
+          # delta is a download-size optimisation, so it is not worth failing a
+          # release over. See issue #6.
+          $hasDelta = Test-Path -LiteralPath $deltaPackagePath -PathType Leaf
+          if (-not $hasDelta) { Write-Host '::warning::No delta package was produced; publishing the full package only.' }
           $unexpectedSetups = @(Get-ChildItem -LiteralPath $artifactDirectory -File -Filter '*Setup*.exe' | Where-Object Name -ne $setupName)
           if ($unexpectedSetups.Count -ne 0) { throw 'The Squirrel.Windows output contains an unexpected setup name.' }
           $releaseEntries = @(Get-Content -LiteralPath $releaseIndex | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-          foreach ($packageName in @($deltaPackageName, $fullPackageName)) {
+          $verifiedPackages = if ($hasDelta) { @($deltaPackageName, $fullPackageName) } else { @($fullPackageName) }
+          foreach ($packageName in $verifiedPackages) {
             $escapedPackageName = [regex]::Escape($packageName)
             $matchingEntry = @($releaseEntries | Where-Object { $_ -match "^(?<sha>[A-Fa-f0-9]{40})\s+$escapedPackageName\s+(?<size>\d+)$" })
             if ($matchingEntry.Count -ne 1) { throw "RELEASES does not link the exact package name: $packageName" }
@@ -86,11 +95,12 @@ jobs:
           $stage = Join-Path $env:RUNNER_TEMP 'release-assets'
           New-Item -ItemType Directory -Force -Path $stage | Out-Null
           Copy-Item -LiteralPath $setupPath -Destination $stage
-          $publishedReleaseEntries = @($releaseEntries | Where-Object { $_ -match "\s+$([regex]::Escape($deltaPackageName))\s+\d+$" -or $_ -match "\s+$([regex]::Escape($fullPackageName))\s+\d+$" })
-          if ($publishedReleaseEntries.Count -ne 2) { throw 'The current full and delta package rows could not be isolated for publication.' }
+          $publishedReleaseEntries = @($releaseEntries | Where-Object { ($hasDelta -and $_ -match "\s+$([regex]::Escape($deltaPackageName))\s+\d+$") -or $_ -match "\s+$([regex]::Escape($fullPackageName))\s+\d+$" })
+          $expectedRowCount = if ($hasDelta) { 2 } else { 1 }
+          if ($publishedReleaseEntries.Count -ne $expectedRowCount) { throw 'The current package rows could not be isolated for publication.' }
           Set-Content -LiteralPath (Join-Path $stage 'RELEASES') -Value $publishedReleaseEntries -Encoding ascii
           Copy-Item -LiteralPath $fullPackagePath -Destination $stage
-          Copy-Item -LiteralPath $deltaPackagePath -Destination $stage
+          if ($hasDelta) { Copy-Item -LiteralPath $deltaPackagePath -Destination $stage }
           $dimSumName = 'hk-dish-0001-classic-har-gow.png'
           $dimSumUrl = "https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/$dimSumName"
           $dimSumPath = Join-Path $stage $dimSumName
@@ -114,19 +124,20 @@ jobs:
             installer_sha256 = $hash
             releases = 'RELEASES'
             full_package = $fullPackageName
-            delta_package = $deltaPackageName
+            delta_package = if ($hasDelta) { $deltaPackageName } else { $null }
             delta_source = 'https://github.com/Ding-Ding-Projects/material-encryption'
             dim_sum_photo = $dimSumName
             dim_sum_source = $dimSumUrl
             signature = $signature.Status.ToString()
           } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $stage 'build-evidence.json') -Encoding utf8
-          $expectedAssets = @($setupName, 'RELEASES', $deltaPackageName, $fullPackageName, 'build-evidence.json', $dimSumName)
+          $expectedAssets = @($setupName, 'RELEASES', $fullPackageName, 'build-evidence.json', $dimSumName)
+          if ($hasDelta) { $expectedAssets += $deltaPackageName }
           $stagedAssets = @(Get-ChildItem -LiteralPath $stage -File | ForEach-Object Name | Sort-Object)
           if (Compare-Object ($expectedAssets | Sort-Object) $stagedAssets) { throw 'Release staging does not contain the exact required asset names.' }
           "stage=$stage" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "setup=$setupName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "package=$fullPackageName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-          "delta=$deltaPackageName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "delta=$(if ($hasDelta) { $deltaPackageName } else { '' })" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "dim_sum=$dimSumName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "sha256=$hash" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 

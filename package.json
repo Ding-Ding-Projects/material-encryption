@@ -69,7 +69,6 @@
     "squirrelWindows": {
       "msi": false,
       "artifactName": "MaterialEncryption-Setup-${version}-${arch}.${ext}",
-      "remoteReleases": "https://github.com/Ding-Ding-Projects/material-encryption",
       "iconUrl": "https://raw.githubusercontent.com/Ding-Ding-Projects/material-encryption/main/build/material-encryption.ico"
     }
   }
