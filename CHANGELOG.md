@@ -2,6 +2,12 @@
 
 ## 0.1.10
 
+### Volume Properties reads the real container
+
+- The Properties destination now takes a container path (typed or chosen through the native picker) and its password, then displays what the engine's own header read returns: location, container file size, volume and data area sizes, cipher, key derivation function, PIM, iteration count, sector size, header version, whether the volume is hidden, and whether the backup header was used.
+- Filesystem label, total, used and free space inside the container are shown when the FAT32 filesystem can be read, and the exact reason is shown when it cannot.
+- Nothing is invented: choosing, reading, a wrong password and an unreadable container each state their real condition, and the password is cleared from renderer state as soon as the reads that need it have finished.
+
 ### Cryptography is now performed by this application
 
 - Added `src/main/volume-format.cjs` and `src/main/volume-engine.cjs`, which implement the VeraCrypt volume header directly: PBKDF2 header keys, XTS, both CRC-32 fields, the primary and backup headers, and the documented non-system iteration rules. Header offsets and iteration counts were checked against the upstream source at tag `VeraCrypt_1.26.29` rather than from memory.
