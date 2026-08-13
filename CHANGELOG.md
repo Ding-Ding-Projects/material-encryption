@@ -2,6 +2,13 @@
 
 ## 0.1.10
 
+### Release-grade verification pass
+
+- Added `tests/benchmark.test.mjs` and inventory rows for the cipher benchmark. The benchmark shipped as a new main-process capability with no test and no completeness-inventory row; the hand-written inventory is only as good as the rows in it, which is exactly the gap it exists to expose.
+- Corrected the Encryption Options copy. It stated that AES is "the fastest on this processor" — a measurement the program never took, and false on the machine it was corrected on: the benchmark this build ships reports Twofish at 28.3 MB/s against AES at 24.8 MB/s. It now names the default and points at the benchmark instead of asserting a result.
+- Verified the four preceding user-interface changes against the packaged application rather than the source: the benchmark channel measures in the built artifact, unavailable ciphers carry null rates, the wizard's capability source resolves, and none of the previously fabricated values appear anywhere in the live DOM.
+- The 36-state capture matrix was regenerated from the packaged build at this commit.
+
 ### Volume Properties reads the real container
 
 - The Properties destination now takes a container path (typed or chosen through the native picker) and its password, then displays what the engine's own header read returns: location, container file size, volume and data area sizes, cipher, key derivation function, PIM, iteration count, sector size, header version, whether the volume is hidden, and whether the backup header was used.

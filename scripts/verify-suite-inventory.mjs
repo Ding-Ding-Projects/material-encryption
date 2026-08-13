@@ -45,6 +45,7 @@ const GATES = [
   { command: 'capture:runtime', scope: 'single packaged runtime state capture', evidence: 'scripts/capture-runtime.mjs' },
   { command: 'dist', scope: 'real installable Squirrel.Windows artifacts', evidence: 'scripts/apply-packaged-icon.cjs' },
   { command: 'build:driver', scope: 'kernel driver built and verified from source', evidence: 'scripts/build-driver.ps1' },
+  { command: 'test:inventory', scope: 'this inventory itself', evidence: 'scripts/verify-suite-inventory.mjs' },
   { command: 'ensure:electron', scope: 'electron binary present before start or package', evidence: 'scripts/ensure-electron-binary.mjs' },
   { command: 'prepare:renderer', scope: 'production renderer generated from the design source', evidence: 'scripts/prepare-renderer.mjs' }
 ];
@@ -61,7 +62,8 @@ const SUITES = [
   { file: 'tests/pdf-tools.test.mjs', scope: 'PDF operations' },
   { file: 'tests/converter-bridge-contract.test.mjs', scope: 'converter IPC contract' },
   { file: 'tests/ollama-manager.test.mjs', scope: 'Ollama suite manager' },
-  { file: 'tests/ollama-bridge-contract.test.mjs', scope: 'Ollama IPC contract' }
+  { file: 'tests/ollama-bridge-contract.test.mjs', scope: 'Ollama IPC contract' },
+  { file: 'tests/benchmark.test.mjs', scope: 'measured cipher throughput, and no number beside an unavailable cipher' }
 ];
 
 // --- canonical capabilities ----------------------------------------------
@@ -80,7 +82,8 @@ const CAPABILITIES = [
   { name: 'File converter', owner: 'src/main/file-converter.cjs', symbol: 'createConverterService' },
   { name: 'Ollama suite manager', owner: 'src/main/ollama-manager.cjs', symbol: 'createOllamaManager' },
   { name: 'App-logo customization', owner: 'src/main/logo-service.cjs', symbol: 'createLogoService' },
-  { name: 'Authenticator', owner: 'src/main/totp.cjs', symbol: 'totp' }
+  { name: 'Authenticator', owner: 'src/main/totp.cjs', symbol: 'totp' },
+  { name: 'Cipher benchmark', owner: 'src/main/benchmark.cjs', symbol: 'runBenchmark' }
 ];
 
 const manifestPath = 'docs/assets/runtime/capture-manifest.json';

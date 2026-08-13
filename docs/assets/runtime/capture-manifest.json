@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "capturedAt": "2026-08-13T01:10:13.889Z",
+  "capturedAt": "2026-08-13T23:02:57.886Z",
   "source": "packaged resources/app.asar through isolated loopback CDP on a cheap Lowlevel hidden desktop",
   "stateCount": 36,
   "baselineStateCount": 24,
@@ -507,7 +507,7 @@
     },
     {
       "state": "ollama-offline",
-      "expected": "Ollama local runtime observation",
+      "expected": "Ollama offline recovery",
       "output": "C:\\Users\\cntow\\Documents\\GitHub\\material-encryption\\docs\\assets\\runtime\\material-encryption-ollama-offline.png",
       "width": 1440,
       "height": 900,
@@ -521,12 +521,12 @@
         "Troubleshooter"
       ],
       "markers": [
-        "Local runtime detected",
-        "Local runtime facts",
-        "0.32.7"
+        "Local runtime not detected",
+        "Offline help",
+        "Start local runtime"
       ],
       "evidenceKind": "actual-bridge-runtime-observation",
-      "evidenceLabel": "Actual packaged local-runtime observation.",
+      "evidenceLabel": "Actual packaged local-runtime-offline state.",
       "fixtureSchemaVersion": null,
       "fixtureId": null,
       "target": "file:///C:/Users/cntow/Documents/GitHub/material-encryption/dist/win-unpacked/resources/app.asar/src/renderer/index.html"

@@ -2106,7 +2106,7 @@ class Component extends DCLogic {
     const stepCopy = [
       'A standard volume is a single encrypted container. A hidden volume lives inside the free space of another volume so its existence cannot be proven.',
       'Choose a file to create, or a partition or device to encrypt in place. An existing file will be replaced, not encrypted.',
-      'The cipher and hash used to derive the header key. AES with SHA-512 is the default and the fastest on this processor.',
+      'The cipher and hash used to derive the header key. AES with HMAC-SHA-512 is the default. Run the benchmark on the Performance & Tools page to measure which cipher is fastest on this machine.',
       'The container is created at full size immediately unless dynamic sizing is enabled.',
       'A long passphrase matters more than character classes. A PIM raises the iteration count.',
       'Filesystem, cluster size and the entropy pool that seeds the master key.',

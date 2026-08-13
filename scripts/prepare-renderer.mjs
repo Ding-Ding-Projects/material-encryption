@@ -372,6 +372,17 @@ html = must(
   'benchmark run button'
 );
 
+// The prototype asserted that AES is "the fastest on this processor". Nothing
+// ever measured that, and on the machine this was corrected on it is false: the
+// benchmark this build now ships reports Twofish at 28.3 MB/s against AES at
+// 24.8 MB/s. Stating a measurement the program never took is the same defect as
+// the invented benchmark table, only in a sentence instead of a table.
+html = must(
+  html,
+  'AES with SHA-512 is the default and the fastest on this processor.',
+  'AES with HMAC-SHA-512 is the default. Run the benchmark on the Performance & Tools page to measure which cipher is fastest on this machine.',
+  'encryption options honest default copy'
+);
 html = must(html, /    const hist = \[[\s\S]*?\n    \];/, '    const hist = [];', 'prototype history');
 html = must(html, /      notifications: \[[\s\S]*?\n      \],\n      toasts:/, '      notifications: [],\n      toasts:', 'prototype notifications');
 
