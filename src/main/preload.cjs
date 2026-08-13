@@ -74,6 +74,7 @@ contextBridge.exposeInMainWorld('materialEncryption', Object.freeze({
   unmount: (options) => invoke('vc:unmount', options),
   unmountAll: (options) => invoke('vc:unmount-all', options),
   wipeCache: () => invoke('vc:wipe-cache'),
+  runBenchmark: () => invoke('tools:benchmark'),
   autoMountDevices: () => invoke('vc:auto-mount-devices'),
   openNative: (surface) => invoke('vc:open-native', { surface }),
   selectVolume: () => invoke('file:select-volume'),

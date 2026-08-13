@@ -14,6 +14,11 @@
 - Added `src/main/crypto/xts.cjs`, an XTS implementation for ciphers the platform does not provide. It is verified byte-identical to the platform's native AES-XTS across five data unit numbers.
 - Camellia and Kuznyechik are not ported and are reported by name as unavailable. They are never silently substituted with AES.
 
+### The benchmark measures this machine
+
+- Added `src/main/benchmark.cjs` and the `tools:benchmark` IPC channel. Performance & Tools no longer shows a table of invented throughput figures: it starts empty, says so, and fills only after the button runs a real measurement. Each available cipher encrypts and decrypts a 1 MiB buffer through this build's own XTS path, 512 bytes at a time, and the buffer size and pass count are stated beside the results so a number can be interpreted.
+- Camellia, Kuznyechik and unimplemented cascades no longer appear with a speed. They are listed as unavailable with the same reason the volume engine gives.
+
 ### Files inside a container, without a drive letter
 
 - Added `src/main/fat32.cjs`: listing, reading, writing, extracting and deleting files, and creating folders, through a sector device that decrypts on read and re-encrypts on write. No drive letter, no kernel driver, and no external program is involved.

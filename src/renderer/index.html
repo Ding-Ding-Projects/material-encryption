@@ -531,6 +531,12 @@ input,select,button,textarea{font-family:inherit;font-size:inherit}
                   <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:12px;padding:11px 16px;background:var(--s3);font:500 12px Roboto,sans-serif;letter-spacing:.4px;text-transform:uppercase;color:var(--onv)">
                     <div>Algorithm</div><div style="text-align:right">Encryption</div><div style="text-align:right">Decryption</div><div style="text-align:right">Mean</div>
                   </div>
+                  <sc-if value="{{ benchmarkStatus }}">
+                    <div style="padding:18px;color:var(--onv);font:400 13px Roboto,sans-serif">{{ benchmarkStatus }}</div>
+                  </sc-if>
+                  <sc-if value="{{ benchmarkNote }}">
+                    <div style="padding:12px 16px;color:var(--onv);font:400 12px Roboto,sans-serif;border-bottom:1px solid var(--outv)">{{ benchmarkNote }}</div>
+                  </sc-if>
                   <sc-for list="{{ benchmark }}" as="b" hint-placeholder-count="7">
                     <div style="{{ b.style }}">
                       <div>{{ b.algo }}</div>
@@ -541,7 +547,7 @@ input,select,button,textarea{font-family:inherit;font-size:inherit}
                   </sc-for>
                 </div>
                 <div style="display:flex;gap:10px;margin-top:14px">
-                  <button style="padding:10px 20px;border-radius:20px;border:0;background:var(--pc);color:var(--opc);font-weight:500;cursor:pointer">Run benchmark</button>
+                  <button onClick="{{ runBenchmark }}" style="padding:10px 20px;border-radius:20px;border:0;background:var(--pc);color:var(--opc);font-weight:500;cursor:pointer">{{ benchmarkButtonLabel }}</button>
                   <button style="padding:10px 20px;border-radius:20px;border:1px solid var(--outv);background:transparent;color:var(--on);cursor:pointer">Run self-tests</button>
                 </div>
               </div>
@@ -1444,6 +1450,7 @@ class Component extends DCLogic {
     volumeType: 'standard', favIndex: 0, favLabel: 'Archive 2026', flags: {},
     menu: null, menuQuery: '', volumeSize: '12', sizeUnit: 'GB',
     driveRows: [], drivesError: null, drivesQueriedAt: null,
+    benchmarkResult: null, benchmarkError: null, benchmarkRunning: false,
     settingsTab: 'appearance', settingsSearch: '', settingsRegex: false, settingsRegexOpen: false, settingsRegexPattern: '', settingsRegexFlags: 'i',
     logoPreset: 'Material blue', logoCustomData: '', logoToken: '', logoFit: 'Contain', logoBackground: '#0842a0', logoFocalX: 50, logoFocalY: 50, logoCropZoom: 100, logoSizePreviews: [], logoStatus: 'Using the shipped Material Encryption logo.',
     converterSearch: '', converterRegex: false, converterRegexOpen: false, converterRegexPattern: '', converterRegexFlags: 'i', converterCategory: 'Documents/PDF', converterCategorySearch: '', converterCategoryRegex: false, converterCategoryRegexOpen: false, converterCategoryRegexPattern: '', converterCategoryRegexFlags: 'i', converterRegistry: [], converterRegistryLoading: false, conversionTarget: '', conversionOutput: '', conversionDestinationToken: '', conversionBusy: false, conversionPlan: null, conversionQueue: [], conversionPdfInputTokens: [],
@@ -1684,6 +1691,32 @@ class Component extends DCLogic {
       if (result && result.ok) this.setState({ driveRows: result.value.drives, drivesError: result.value.error, drivesQueriedAt: result.value.queriedAt });
       else this.setState({ drivesError: (result && result.error) || 'Drive letters could not be queried.' });
     } catch (error) { this.setState({ drivesError: (error && error.message) || String(error) }); }
+  }
+
+  formatThroughput(value) {
+    if (!Number.isFinite(value) || value <= 0) return '—';
+    return (value >= 100 ? Math.round(value) : value.toFixed(1)) + ' MB/s';
+  }
+
+  async runBenchmark() {
+    if (this.state.benchmarkRunning) return;
+    const api = window.materialEncryption;
+    if (!api || typeof api.runBenchmark !== 'function') { this.setState({ benchmarkError: 'The benchmark bridge is unavailable in this build.' }); return; }
+    this.setState({ benchmarkRunning: true, benchmarkError: null });
+    try {
+      const result = await api.runBenchmark();
+      if (result && result.ok) this.setState({ benchmarkResult: result.value, benchmarkError: null });
+      else this.setState({ benchmarkError: (result && result.error) || 'The benchmark could not be run.' });
+    } catch (error) { this.setState({ benchmarkError: (error && error.message) || String(error) }); }
+    this.setState({ benchmarkRunning: false });
+  }
+
+  benchmarkData() {
+    const result = this.state.benchmarkResult;
+    if (!result || !Array.isArray(result.rows)) return [];
+    return result.rows.map(row => row.available
+      ? { algo: row.label, enc: this.formatThroughput(row.encryptMbPerSecond), dec: this.formatThroughput(row.decryptMbPerSecond), mean: this.formatThroughput(row.meanMbPerSecond) }
+      : { algo: row.label, enc: 'Unavailable', dec: '—', mean: '—' });
   }
 
   drivesData() {
@@ -1932,12 +1965,7 @@ class Component extends DCLogic {
       ['Mount favorite volumes as read-only', 'None'], ['Show/hide VeraCrypt window', 'Ctrl+Shift+V']
     ];
 
-    const bench = [
-      ['AES', '3.9 GB/s', '4.1 GB/s', '4.0 GB/s'], ['Serpent', '780 MB/s', '812 MB/s', '796 MB/s'],
-      ['Twofish', '1.1 GB/s', '1.2 GB/s', '1.15 GB/s'], ['Camellia', '640 MB/s', '651 MB/s', '645 MB/s'],
-      ['Kuznyechik', '410 MB/s', '418 MB/s', '414 MB/s'], ['AES(Twofish)', '860 MB/s', '881 MB/s', '870 MB/s'],
-      ['AES(Twofish(Serpent))', '390 MB/s', '402 MB/s', '396 MB/s']
-    ];
+    const bench = [];
 
     const hist = [];
 
@@ -2571,10 +2599,18 @@ class Component extends DCLogic {
         ['Disable memory protection for Accessibility tools compatibility', 0],
         ['Disable protection against screenshots and screen recording', 0]
       ]),
-      benchmark: bench.map((b, i) => ({
-        algo: b[0], enc: b[1], dec: b[2], mean: b[3],
-        style: 'display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:12px;padding:11px 16px;background:var(--s1);border-bottom:' + (i === bench.length - 1 ? '0' : '1px solid var(--outv)')
+      benchmark: this.benchmarkData().map((b, i, all) => ({
+        algo: b.algo, enc: b.enc, dec: b.dec, mean: b.mean,
+        style: 'display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:12px;padding:11px 16px;background:var(--s1);border-bottom:' + (i === all.length - 1 ? '0' : '1px solid var(--outv)')
       })),
+      benchmarkStatus: s.benchmarkError
+        ? 'The benchmark could not be run: ' + s.benchmarkError
+        : (s.benchmarkRunning ? 'Running the benchmark on this machine…' : (s.benchmarkResult ? '' : 'Not run yet — no throughput has been measured on this machine.')),
+      benchmarkNote: s.benchmarkResult
+        ? 'Measured here: ' + Math.round(s.benchmarkResult.bufferBytes / 1048576) + ' MiB encrypted and decrypted through ' + s.benchmarkResult.dataUnitBytes + '-byte XTS data units, ' + s.benchmarkResult.iterations + ' pass(es) per direction.' + s.benchmarkResult.rows.filter(r => !r.available).map(r => ' ' + r.label + ': ' + r.reason).join('')
+        : '',
+      benchmarkButtonLabel: s.benchmarkRunning ? 'Running…' : 'Run benchmark',
+      runBenchmark: () => this.runBenchmark(),
       travelerOptions: this.checks([
         ['Include VeraCrypt Volume Creation Wizard', 1],
         ['Include VeraCrypt Volume Expander', 0],

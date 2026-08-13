@@ -134,6 +134,88 @@ html = must(
   "type: d.type || '—',",
   'drive type column'
 );
+// The prototype's benchmark table was seven invented rows, two of them for
+// ciphers this build cannot perform at all. The table now starts empty and is
+// filled only by a measurement the main process actually performed.
+html = must(html, /    const bench = \[[\s\S]*?\n    \];/, '    const bench = [];', 'prototype benchmark rows');
+html = must(
+  html,
+  '    driveRows: [], drivesError: null, drivesQueriedAt: null,',
+  '    driveRows: [], drivesError: null, drivesQueriedAt: null,\n    benchmarkResult: null, benchmarkError: null, benchmarkRunning: false,',
+  'benchmark state'
+);
+html = must(
+  html,
+  '  drivesData() {',
+  [
+    '  formatThroughput(value) {',
+    "    if (!Number.isFinite(value) || value <= 0) return '—';",
+    "    return (value >= 100 ? Math.round(value) : value.toFixed(1)) + ' MB/s';",
+    '  }',
+    '',
+    '  async runBenchmark() {',
+    '    if (this.state.benchmarkRunning) return;',
+    '    const api = window.materialEncryption;',
+    "    if (!api || typeof api.runBenchmark !== 'function') { this.setState({ benchmarkError: 'The benchmark bridge is unavailable in this build.' }); return; }",
+    '    this.setState({ benchmarkRunning: true, benchmarkError: null });',
+    '    try {',
+    '      const result = await api.runBenchmark();',
+    '      if (result && result.ok) this.setState({ benchmarkResult: result.value, benchmarkError: null });',
+    "      else this.setState({ benchmarkError: (result && result.error) || 'The benchmark could not be run.' });",
+    '    } catch (error) { this.setState({ benchmarkError: (error && error.message) || String(error) }); }',
+    '    this.setState({ benchmarkRunning: false });',
+    '  }',
+    '',
+    '  benchmarkData() {',
+    '    const result = this.state.benchmarkResult;',
+    '    if (!result || !Array.isArray(result.rows)) return [];',
+    '    return result.rows.map(row => row.available',
+    '      ? { algo: row.label, enc: this.formatThroughput(row.encryptMbPerSecond), dec: this.formatThroughput(row.decryptMbPerSecond), mean: this.formatThroughput(row.meanMbPerSecond) }',
+    "      : { algo: row.label, enc: 'Unavailable', dec: '—', mean: '—' });",
+    '  }',
+    '',
+    '  drivesData() {'
+  ].join('\n'),
+  'benchmark runner'
+);
+html = must(
+  html,
+  /      benchmark: bench\.map\(\(b, i\) => \(\{\n[\s\S]*?\n      \}\)\),/,
+  [
+    '      benchmark: this.benchmarkData().map((b, i, all) => ({',
+    '        algo: b.algo, enc: b.enc, dec: b.dec, mean: b.mean,',
+    "        style: 'display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:12px;padding:11px 16px;background:var(--s1);border-bottom:' + (i === all.length - 1 ? '0' : '1px solid var(--outv)')",
+    '      })),',
+    '      benchmarkStatus: s.benchmarkError',
+    "        ? 'The benchmark could not be run: ' + s.benchmarkError",
+    "        : (s.benchmarkRunning ? 'Running the benchmark on this machine…' : (s.benchmarkResult ? '' : 'Not run yet — no throughput has been measured on this machine.')),",
+    '      benchmarkNote: s.benchmarkResult',
+    "        ? 'Measured here: ' + Math.round(s.benchmarkResult.bufferBytes / 1048576) + ' MiB encrypted and decrypted through ' + s.benchmarkResult.dataUnitBytes + '-byte XTS data units, ' + s.benchmarkResult.iterations + ' pass(es) per direction.' + s.benchmarkResult.rows.filter(r => !r.available).map(r => ' ' + r.label + ': ' + r.reason).join('')",
+    "        : '',",
+    "      benchmarkButtonLabel: s.benchmarkRunning ? 'Running…' : 'Run benchmark',",
+    '      runBenchmark: () => this.runBenchmark(),'
+  ].join('\n'),
+  'benchmark table data'
+);
+html = must(
+  html,
+  '                  <sc-for list="{{ benchmark }}" as="b" hint-placeholder-count="7">',
+  '                  <sc-if value="{{ benchmarkStatus }}">\n' +
+  '                    <div style="padding:18px;color:var(--onv);font:400 13px Roboto,sans-serif">{{ benchmarkStatus }}</div>\n' +
+  '                  </sc-if>\n' +
+  '                  <sc-if value="{{ benchmarkNote }}">\n' +
+  '                    <div style="padding:12px 16px;color:var(--onv);font:400 12px Roboto,sans-serif;border-bottom:1px solid var(--outv)">{{ benchmarkNote }}</div>\n' +
+  '                  </sc-if>\n' +
+  '                  <sc-for list="{{ benchmark }}" as="b" hint-placeholder-count="7">',
+  'benchmark table status row'
+);
+html = must(
+  html,
+  '<button style="padding:10px 20px;border-radius:20px;border:0;background:var(--pc);color:var(--opc);font-weight:500;cursor:pointer">Run benchmark</button>',
+  '<button onClick="{{ runBenchmark }}" style="padding:10px 20px;border-radius:20px;border:0;background:var(--pc);color:var(--opc);font-weight:500;cursor:pointer">{{ benchmarkButtonLabel }}</button>',
+  'benchmark run button'
+);
+
 html = must(html, /    const hist = \[[\s\S]*?\n    \];/, '    const hist = [];', 'prototype history');
 html = must(html, /      notifications: \[[\s\S]*?\n      \],\n      toasts:/, '      notifications: [],\n      toasts:', 'prototype notifications');
 

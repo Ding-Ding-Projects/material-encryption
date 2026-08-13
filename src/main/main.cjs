@@ -10,6 +10,7 @@ const ollama = require('./ollama-manager.cjs');
 const logos = require('./logo-service.cjs');
 const elevation = require('./elevation.cjs');
 const engine = require('./volume-engine.cjs');
+const benchmark = require('./benchmark.cjs');
 
 // Volume operations need administrator rights, so relaunch elevated once per
 // launch. Declining the prompt keeps the app running unelevated rather than
@@ -271,6 +272,9 @@ app.whenReady().then(() => {
     return vc.unmountAll({ force: boolean(payload.force, 'force') });
   });
   register('vc:wipe-cache', () => vc.wipeCache());
+  // Real measured cipher throughput. Bounded buffer and iteration count, so the
+  // worst case is a short pause rather than a hung window.
+  register('tools:benchmark', () => benchmark.runBenchmark());
   register('vc:auto-mount-devices', () => vc.autoMountDevices());
   register('vc:open-native', (value) => vc.openNative(boundedText(record(value).surface, 'Surface', 32)));
 
