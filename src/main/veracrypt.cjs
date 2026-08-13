@@ -129,9 +129,33 @@ function normalizeVolumeRow(row) {
   };
 }
 
+// Querying the drive letters costs a PowerShell process and about a second, and
+// the renderer polls. Serving the last result immediately while one refresh runs
+// in the background keeps the table populated across reloads and stops the poll
+// spawning a process every few seconds.
+let driveCache = null;
+let driveRefresh = null;
+const DRIVE_CACHE_MS = 4000;
+
+async function listDrives({ refresh = false } = {}) {
+  const fresh = driveCache && Date.now() - driveCache.at < DRIVE_CACHE_MS;
+  if (!refresh && fresh) return driveCache.value;
+  if (!driveRefresh) {
+    driveRefresh = queryDrives()
+      .then((value) => { driveCache = { at: Date.now(), value }; return value; })
+      .finally(() => { driveRefresh = null; });
+  }
+  // A cached answer, however old, beats an empty table while a query is running.
+  if (driveCache && !refresh) {
+    driveRefresh.catch(() => {});
+    return driveCache.value;
+  }
+  return driveRefresh;
+}
+
 // Every letter A–Z, with the ones currently in use annotated from live system
 // state. Letters with no device are genuinely free mount targets.
-async function listDrives() {
+async function queryDrives() {
   const alphabet = Array.from({ length: 26 }, (_, index) => `${String.fromCharCode(65 + index)}:`);
   let rows = [];
   let error = null;

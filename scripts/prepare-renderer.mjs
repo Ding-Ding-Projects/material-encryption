@@ -96,6 +96,29 @@ html = must(
   'drive poll'
 );
 html = must(html, 'clearInterval(this.converterQueueTimer); }', 'clearInterval(this.converterQueueTimer); clearInterval(this.driveTimer); }', 'drive poll teardown');
+
+// Reading the real drive list takes a moment, and it can fail. Without a status
+// row the table renders as a bare header with nothing under it, which reads as a
+// broken app rather than a pending query — and an outright failure would show
+// the same empty header forever, saying nothing about what went wrong.
+html = must(
+  html,
+  '                <sc-for list="{{ drives }}" as="d" hint-placeholder-count="12">',
+  '                <sc-if value="{{ drivesStatus }}">\n' +
+  '                  <div style="padding:18px;color:var(--onv);font:400 13px Roboto,sans-serif">{{ drivesStatus }}</div>\n' +
+  '                </sc-if>\n' +
+  '                <sc-for list="{{ drives }}" as="d" hint-placeholder-count="12">',
+  'drive table status row'
+);
+html = must(
+  html,
+  '      drives: drives.map((d, i) => ({',
+  '      drivesStatus: s.drivesError\n' +
+  "        ? 'Drive letters could not be read: ' + s.drivesError\n" +
+  "        : (s.driveRows.length ? '' : 'Reading the drive letters on this machine…'),\n" +
+  '      drives: drives.map((d, i) => ({',
+  'drive table status text'
+);
 html = must(
   html,
   /    const props = \[[\s\S]*?\n    \];\n\n    const favData = \[[\s\S]*?\n    \];/,

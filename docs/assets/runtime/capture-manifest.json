@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "capturedAt": "2026-08-12T17:27:46.311Z",
+  "capturedAt": "2026-08-13T01:10:13.889Z",
   "source": "packaged resources/app.asar through isolated loopback CDP on a cheap Lowlevel hidden desktop",
   "stateCount": 36,
   "baselineStateCount": 24,
@@ -523,7 +523,7 @@
       "markers": [
         "Local runtime detected",
         "Local runtime facts",
-        "0.32.9"
+        "0.32.7"
       ],
       "evidenceKind": "actual-bridge-runtime-observation",
       "evidenceLabel": "Actual packaged local-runtime observation.",

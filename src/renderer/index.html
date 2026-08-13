@@ -148,6 +148,9 @@ input,select,button,textarea{font-family:inherit;font-size:inherit}
                 <div style="display:grid;grid-template-columns:88px 1fr 108px 200px 108px;gap:12px;padding:12px 18px;background:var(--s3);font:500 12px Roboto,sans-serif;letter-spacing:.4px;color:var(--onv);text-transform:uppercase">
                   <div>Drive</div><div>Volume</div><div style="text-align:right">Size</div><div>Encryption Algorithm</div><div>Type</div>
                 </div>
+                <sc-if value="{{ drivesStatus }}">
+                  <div style="padding:18px;color:var(--onv);font:400 13px Roboto,sans-serif">{{ drivesStatus }}</div>
+                </sc-if>
                 <sc-for list="{{ drives }}" as="d" hint-placeholder-count="12">
                   <div onClick="{{ d.select }}" onContextMenu="{{ d.menu }}" style="{{ d.rowStyle }}">
                     <div style="display:flex;align-items:center;gap:9px">
@@ -2436,6 +2439,9 @@ class Component extends DCLogic {
       search: s.search, setSearch: (e) => this.setState({ search: e.target.value }),
       regexChipStyle: 'display:inline-flex;align-items:center;height:34px;padding:0 14px;border-radius:17px;background:var(--s3);color:var(--onv);font-size:12px;font-weight:500;white-space:nowrap',
       regexChipLabel: 'Plain text — regex off',
+      drivesStatus: s.drivesError
+        ? 'Drive letters could not be read: ' + s.drivesError
+        : (s.driveRows.length ? '' : 'Reading the drive letters on this machine…'),
       drives: drives.map((d, i) => ({
         letter: d.letter, size: d.size || '—', algo: d.algo || '—', type: d.type || '—',
         path: d.path || '—', pathColor: d.mounted ? 'var(--on)' : 'var(--out)',
