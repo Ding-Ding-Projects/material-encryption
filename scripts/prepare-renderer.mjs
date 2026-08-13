@@ -134,6 +134,50 @@ html = must(
   "type: d.type || '—',",
   'drive type column'
 );
+// The prototype's context menu could only be dismissed by clicking its scrim or
+// activating an entry. Escape did nothing to it — the key handler cleared the
+// dialog state and left `menu` set — and nothing returned focus to the control
+// the menu was opened from, so a keyboard user was stranded on a surface with no
+// way out. One close path now serves every route and restores that focus.
+html = must(
+  html,
+  '  openMenu(e, title, items) {\n    e.preventDefault();\n    e.stopPropagation();\n',
+  [
+    '  closeAppMenu(restoreFocus) {',
+    '    const opener = this.menuOpener;',
+    '    this.menuOpener = null;',
+    "    if (this.state.menu) this.setState({ menu: null, menuQuery: '' });",
+    "    if (restoreFocus !== false && opener && document.contains(opener) && typeof opener.focus === 'function') opener.focus();",
+    '  }',
+    '',
+    '  openMenu(e, title, items) {',
+    '    e.preventDefault();',
+    '    e.stopPropagation();',
+    '    this.menuOpener = e.currentTarget instanceof HTMLElement ? e.currentTarget : document.activeElement;',
+    ''
+  ].join('\n'),
+  'context menu close path'
+);
+html = must(
+  html,
+  "else if (e.key === 'Escape') this.setState({ dialog: null, keyA: false, keyL: false });",
+  "else if (e.key === 'Escape') { if (this.state.menu) { e.preventDefault(); this.closeAppMenu(); return; } this.setState({ dialog: null, keyA: false, keyL: false }); }",
+  'context menu escape close'
+);
+html = must(
+  html,
+  '      closeMenu: () => this.setState({ menu: null }),',
+  '      closeMenu: () => this.closeAppMenu(),',
+  'context menu scrim close'
+);
+// An entry that opens a dialog must not have focus yanked back to the control
+// behind it, so activation closes the menu without restoring focus.
+html = must(
+  html,
+  '        run: () => { this.setState({ menu: null }); if (m[1]) m[1](); },',
+  '        run: () => { this.closeAppMenu(false); if (m[1]) m[1](); },',
+  'context menu item activation close'
+);
 html = must(html, /    const hist = \[[\s\S]*?\n    \];/, '    const hist = [];', 'prototype history');
 html = must(html, /      notifications: \[[\s\S]*?\n      \],\n      toasts:/, '      notifications: [],\n      toasts:', 'prototype notifications');
 

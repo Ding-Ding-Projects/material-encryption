@@ -3,7 +3,7 @@
   const api = window.materialEncryption;
   if (!api) return;
 
-  const state = { menu: null, wizard: null, locks: [], skipNextContext: false, unlockedUntil: new Map(), allowNextActivation: new Set() };
+  const state = { menu: null, wizard: null, locks: [], skipNextContext: false, unlockedUntil: new Map(), allowNextActivation: new Set(), opener: null };
 
   const css = document.createElement('style');
   css.textContent = `
@@ -109,13 +109,25 @@
     layer.style.left = `${left}px`; layer.style.top = `${top}px`;
   }
 
-  function closeLayers() {
+  // Closing is the part a menu gets wrong silently: the surface stays on screen,
+  // every later click lands on the page behind it, and nothing reports a fault.
+  // One close path serves every dismissal route, and it hands focus back to the
+  // element the menu was opened from unless the caller is about to move focus
+  // itself.
+  function closeLayers(options) {
+    const restoreFocus = !options || options.restoreFocus !== false;
+    const opener = state.opener;
+    const had = document.querySelector('.toy-layer') !== null;
     document.querySelectorAll('.toy-layer').forEach((element) => element.remove());
-    state.menu = null; state.wizard = null;
+    state.menu = null; state.wizard = null; state.opener = null;
+    if (had && restoreFocus && opener && document.contains(opener) && typeof opener.focus === 'function') opener.focus();
   }
 
   function createLayer(kind, target) {
-    closeLayers();
+    const focusable = target instanceof Element && (target.tabIndex >= 0 || target.matches('a[href],button,input,select,textarea,[tabindex]'));
+    const opener = focusable ? target : document.activeElement;
+    closeLayers({ restoreFocus: false });
+    state.opener = opener && document.contains(opener) ? opener : null;
     const layer = document.createElement('div'); layer.className = `toy-layer ${kind}`; layer.dataset.toyUi = 'true';
     layer.addEventListener('contextmenu', (event) => event.stopPropagation());
     document.body.appendChild(layer); requestAnimationFrame(() => position(layer, target)); return layer;
@@ -129,8 +141,8 @@
     layer.querySelector('.toy-title').textContent = info.targetLabel;
     const definitions = [
       { label: existing ? (isUnlocked(existing) ? 'Lock this element again' : 'Unlock or remove this element lock…') : 'Lock this element…', run: () => existing ? (isUnlocked(existing) ? relock(info, existing) : openUnlockWizard(info, existing)) : openLockWizard(info) },
-      { label: 'Edit this element appearance…', run: () => window.dispatchEvent(new CustomEvent('material-encryption-appearance-target', { detail: info })) },
-      { label: 'Open original element actions…', run: () => { closeLayers(); state.skipNextContext = true; target.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: point.x, clientY: point.y })); } }
+      { label: 'Edit this element appearance…', run: () => { closeLayers(); window.dispatchEvent(new CustomEvent('material-encryption-appearance-target', { detail: info })); } },
+      { label: 'Open original element actions…', run: () => { closeLayers({ restoreFocus: false }); state.skipNextContext = true; target.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: point.x, clientY: point.y })); } }
     ];
     const actions = layer.querySelector('.actions');
     const render = () => {
@@ -228,6 +240,24 @@
     openElementMenu(event.target, { x: event.clientX, y: event.clientY });
   }, true);
 
+  // Outside dismissal runs on pointerdown rather than click, so a press that
+  // starts outside the menu closes it even when the release lands somewhere the
+  // click never reaches. Capture phase, because the page's own handlers stop
+  // propagation freely and a bubbling listener would simply never run.
+  // Only menus dismiss themselves this way. A lock wizard holds typed input over
+  // several steps, so an accidental click beside it must not discard that work —
+  // it keeps its explicit Cancel and Escape routes.
+  const menuOpen = () => document.querySelector('.toy-menu-layer') !== null;
+  const outside = (target) => !(target instanceof Element) || !target.closest('.toy-layer');
+  document.addEventListener('pointerdown', (event) => { if (menuOpen() && outside(event.target)) closeLayers({ restoreFocus: false }); }, true);
+  document.addEventListener('focusin', (event) => { if (menuOpen() && outside(event.target)) closeLayers({ restoreFocus: false }); }, true);
+
+  // A menu anchored to a point on the page is wrong the moment the page moves
+  // under it, and a menu left behind by a window switch is the one users report.
+  window.addEventListener('blur', () => { if (menuOpen()) closeLayers({ restoreFocus: false }); });
+  window.addEventListener('resize', () => { if (menuOpen()) closeLayers({ restoreFocus: false }); });
+  document.addEventListener('scroll', (event) => { if (menuOpen() && outside(event.target)) closeLayers({ restoreFocus: false }); }, true);
+
   document.addEventListener('click', (event) => {
     if (event.target.closest('.toy-layer')) return;
     const found = lockFor(event.target); if (!found) return;
@@ -237,7 +267,7 @@
   }, true);
 
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && document.querySelector('.toy-layer')) { event.preventDefault(); closeLayers(); return; }
+    if (event.key === 'Escape' && document.querySelector('.toy-layer')) { event.preventDefault(); event.stopPropagation(); closeLayers(); return; }
     if (event.ctrlKey && event.altKey && event.key.toLowerCase() === 'l') { event.preventDefault(); openElementNavigator(); return; }
     if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) { event.preventDefault(); openElementMenu(document.activeElement === document.body ? document.querySelector('main') : document.activeElement, { x: 24, y: 24 }); }
   });
