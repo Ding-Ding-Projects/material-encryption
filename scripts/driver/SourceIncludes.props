@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Injected into the VeraCrypt driver build with /p:ForceImportBeforeCppTargets.
+
+  The driver project is normally built as part of VeraCrypt.sln and resolves its
+  own headers through $(SolutionDir). Building the .vcxproj on its own leaves
+  that empty, so Tcdefs.h and the Crypto headers are not found. Appending here
+  keeps every include path the WDK toolset already established, which overriding
+  $(IncludePath) on the command line destroys — that route compiles the C files
+  and then fails inside ntdef.h with "No Target Architecture", because the
+  kernel headers went missing rather than the source ones.
+-->
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(VeraCryptSourceRoot);$(VeraCryptSourceRoot)\Common;$(VeraCryptSourceRoot)\Crypto;$(VeraCryptSourceRoot)\Crypto\Argon2\include;$(VeraCryptSourceRoot)\Crypto\Argon2\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <ResourceCompile>
+      <AdditionalIncludeDirectories>$(MSBuildThisFileDirectory)shim;$(VeraCryptSourceRoot);$(VeraCryptSourceRoot)\Common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+  </ItemDefinitionGroup>
+</Project>

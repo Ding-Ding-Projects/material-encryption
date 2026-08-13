@@ -27,7 +27,8 @@
     "package": "npm run test:brand && npm run prepare:renderer && electron-builder --win --x64 --dir",
     "dist": "npm run test:brand && npm run prepare:renderer && npm run dist:unsigned",
     "dist:unsigned": "electron-builder --win squirrel --x64",
-    "ensure:electron": "node scripts/ensure-electron-binary.mjs"
+    "ensure:electron": "node scripts/ensure-electron-binary.mjs",
+    "build:driver": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/build-driver.ps1"
   },
   "dependencies": {
     "@babel/standalone": "7.29.0",
