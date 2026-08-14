@@ -2,6 +2,12 @@
 
 ## 0.1.10
 
+### The Create button, pressed
+
+- The Confirm password field had no value and no change handler: typing in it did nothing, and a mismatched confirmation still created the container. A confirmation box that cannot disagree is worse than none, because its presence claims a check happened. It now compares against the password, says so either way, and creation is refused when the two differ.
+- The Use PIM checkbox was unbound and there was no way to enter a PIM or a volume label at all, even though the engine accepts both. Both are now real inputs, validated and passed through to the engine.
+- Added `scripts/verify-wizard-runtime.mjs` (`npm run verify:wizard`). It drives the wizard in the packaged application with real mouse and keyboard events through the debugging protocol — not synthetic DOM events, which this renderer ignores — types a destination, size, password, confirmation, PIM and label, presses Create, and then reads the result back with the engine to prove the typed PIM and label reached the container and that a different PIM is refused. 22 checks.
+
 ### Release-grade verification pass
 
 - Added `tests/benchmark.test.mjs` and inventory rows for the cipher benchmark. The benchmark shipped as a new main-process capability with no test and no completeness-inventory row; the hand-written inventory is only as good as the rows in it, which is exactly the gap it exists to expose.

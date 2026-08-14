@@ -46,6 +46,7 @@ const GATES = [
   { command: 'dist', scope: 'real installable Squirrel.Windows artifacts', evidence: 'scripts/apply-packaged-icon.cjs' },
   { command: 'build:driver', scope: 'kernel driver built and verified from source', evidence: 'scripts/build-driver.ps1' },
   { command: 'test:inventory', scope: 'this inventory itself', evidence: 'scripts/verify-suite-inventory.mjs' },
+  { command: 'verify:wizard', scope: 'the Volume Creation Wizard driven by real input in the packaged application', evidence: 'scripts/verify-wizard-runtime.mjs' },
   { command: 'ensure:electron', scope: 'electron binary present before start or package', evidence: 'scripts/ensure-electron-binary.mjs' },
   { command: 'prepare:renderer', scope: 'production renderer generated from the design source', evidence: 'scripts/prepare-renderer.mjs' }
 ];

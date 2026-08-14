@@ -29,7 +29,8 @@
     "dist:unsigned": "electron-builder --win squirrel --x64",
     "ensure:electron": "node scripts/ensure-electron-binary.mjs",
     "test:inventory": "node scripts/verify-suite-inventory.mjs",
-    "build:driver": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/build-driver.ps1"
+    "build:driver": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/build-driver.ps1",
+    "verify:wizard": "node scripts/verify-wizard-runtime.mjs"
   },
   "dependencies": {
     "@babel/standalone": "7.29.0",

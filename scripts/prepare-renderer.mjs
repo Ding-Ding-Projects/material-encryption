@@ -86,7 +86,7 @@ html = must(html, /  drivesData\(\) \{\n    const mounted = \{[\s\S]*?\n  \}\n\n
 html = must(
   html,
   "    menu: null, menuQuery: '', volumeSize: '12', sizeUnit: 'GB',",
-  "    menu: null, menuQuery: '', volumeSize: '12', sizeUnit: 'GB',\n    driveRows: [], drivesError: null, drivesQueriedAt: null,",
+  "    menu: null, menuQuery: '', volumeSize: '12', sizeUnit: 'GB',\n    driveRows: [], drivesError: null, drivesQueriedAt: null,\n    confirmPassword: '', usePim: false, wizardPim: '0', wizardLabel: 'ENCRYPTED',",
   'drive state'
 );
 html = must(
@@ -383,6 +383,58 @@ html = must(
   'AES with HMAC-SHA-512 is the default. Run the benchmark on the Performance & Tools page to measure which cipher is fastest on this machine.',
   'encryption options honest default copy'
 );
+// The Confirm field was decoration: no value and no onChange, so typing in it
+// did nothing and a mismatched confirmation still created the container. A
+// confirmation box that cannot disagree with the password is worse than none,
+// because its presence says it checked. The PIM and keyfile checkboxes were
+// unbound in the same way, and there was no way to enter a PIM or a label at all
+// even though the engine accepts both.
+html = must(
+  html,
+  '                      <label style="display:block;font-size:12px;color:var(--onv);margin-bottom:5px">Confirm</label>\n' +
+  '                      <input type="password" style="width:100%;background:var(--s1);border:1px solid var(--outv);border-radius:12px;color:var(--on);padding:12px 14px;outline:none">',
+  '                      <label style="display:block;font-size:12px;color:var(--onv);margin-bottom:5px">Confirm</label>\n' +
+  '                      <input type="password" value="{{ confirmPassword }}" onChange="{{ setConfirmPassword }}" style="width:100%;background:var(--s1);border:1px solid var(--outv);border-radius:12px;color:var(--on);padding:12px 14px;outline:none">\n' +
+  '                      <p style="margin:6px 0 0;font-size:12px;color:{{ confirmColor }}">{{ confirmMessage }}</p>',
+  'wizard confirm password field'
+);
+html = must(
+  html,
+  '                      <label style="display:flex;align-items:center;gap:11px;color:var(--onv);cursor:pointer"><input type="checkbox" style="width:18px;height:18px;accent-color:var(--p)"> Use PIM</label>\n' +
+  '                    </div>',
+  '                      <label style="display:flex;align-items:center;gap:11px;color:var(--onv);cursor:pointer"><input type="checkbox" checked="{{ usePim }}" onChange="{{ toggleUsePim }}" style="width:18px;height:18px;accent-color:var(--p)"> Use PIM</label>\n' +
+  '                    </div>\n' +
+  '                    <sc-if value="{{ usePim }}">\n' +
+  '                      <div>\n' +
+  '                        <label style="display:block;font-size:12px;color:var(--onv);margin-bottom:5px">PIM</label>\n' +
+  '                        <input type="number" min="0" max="65535" value="{{ wizardPim }}" onChange="{{ setWizardPim }}" style="width:100%;background:var(--s1);border:1px solid var(--outv);border-radius:12px;color:var(--on);padding:12px 14px;outline:none">\n' +
+  '                        <p style="margin:6px 0 0;font-size:12px;color:var(--onv)">{{ pimMessage }}</p>\n' +
+  '                      </div>\n' +
+  '                    </sc-if>\n' +
+  '                    <div>\n' +
+  '                      <label style="display:block;font-size:12px;color:var(--onv);margin-bottom:5px">Volume label</label>\n' +
+  '                      <input type="text" maxlength="11" value="{{ wizardLabel }}" onChange="{{ setWizardLabel }}" style="width:100%;background:var(--s1);border:1px solid var(--outv);border-radius:12px;color:var(--on);padding:12px 14px;outline:none">\n' +
+  '                      <p style="margin:6px 0 0;font-size:12px;color:var(--onv)">Up to 11 characters, stored in the FAT32 boot sector.</p>\n' +
+  '                    </div>',
+  'wizard pim and label inputs'
+);
+html = must(
+  html,
+  '      wizardIsLocation: s.wizardStep === 1,',
+  "      confirmPassword: s.confirmPassword,\n" +
+  "      setConfirmPassword: (e) => this.setState({ confirmPassword: e.target.value }),\n" +
+  "      confirmMessage: !s.confirmPassword ? 'Re-enter the password to confirm it.' : (s.confirmPassword === s.newPassword ? 'The passwords match.' : 'The passwords do not match.'),\n" +
+  "      confirmColor: !s.confirmPassword ? 'var(--onv)' : (s.confirmPassword === s.newPassword ? 'var(--ok)' : 'var(--err)'),\n" +
+  "      usePim: s.usePim,\n" +
+  "      toggleUsePim: () => this.setState({ usePim: !s.usePim, wizardPim: '0' }),\n" +
+  "      wizardPim: s.wizardPim,\n" +
+  "      setWizardPim: (e) => this.setState({ wizardPim: e.target.value }),\n" +
+  "      pimMessage: 'A personal iterations multiplier. 0 uses the standard 500,000 iterations; any other value uses 15,000 + PIM x 1,000, and must be entered every time this volume is opened.',\n" +
+  "      wizardLabel: s.wizardLabel,\n" +
+  "      setWizardLabel: (e) => this.setState({ wizardLabel: String(e.target.value).toUpperCase().slice(0, 11) }),\n" +
+  '      wizardIsLocation: s.wizardStep === 1,',
+  'wizard confirm and pim bindings'
+);
 html = must(html, /    const hist = \[[\s\S]*?\n    \];/, '    const hist = [];', 'prototype history');
 html = must(html, /      notifications: \[[\s\S]*?\n      \],\n      toasts:/, '      notifications: [],\n      toasts:', 'prototype notifications');
 
@@ -464,6 +516,9 @@ const wizardMethods = [
   "    const volume = String(this.state.volumePath || '').trim();",
   "    if (!volume) { this.setState({ wizardError: 'Choose a container path on the Volume Location step first.' }); return; }",
   "    if (!this.state.newPassword) { this.setState({ wizardError: 'Enter a password on the Volume Password step first.' }); return; }",
+  "    if (this.state.confirmPassword !== this.state.newPassword) { this.setState({ wizardError: 'The password and its confirmation do not match.' }); return; }",
+  "    const pim = this.state.usePim ? Number(this.state.wizardPim) : 0;",
+  "    if (!Number.isSafeInteger(pim) || pim < 0 || pim > 65535) { this.setState({ wizardError: 'PIM must be a whole number between 0 and 65535.' }); return; }",
   '    const sizeBytes = this.wizardSizeBytes();',
   "    if (!Number.isFinite(sizeBytes)) { this.setState({ wizardError: 'Enter the volume size as a number.' }); return; }",
   '    const minimum = this.state.volumeCaps ? this.state.volumeCaps.minimumBytes : 64 * 1024 * 1024;',
@@ -476,8 +531,8 @@ const wizardMethods = [
   '        sizeBytes,',
   '        cipher: this.state.dd.cipher,',
   '        prf: this.state.dd.hash,',
-  '        pim: 0,',
-  "        volumeLabel: 'ENCRYPTED',",
+  '        pim,',
+  "        volumeLabel: (this.state.wizardLabel || 'ENCRYPTED').slice(0, 11),",
   '        filesystem: this.state.dd.filesystem,',
   '        overwrite: false',
   '      });',

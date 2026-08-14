@@ -345,7 +345,8 @@ input,select,button,textarea{font-family:inherit;font-size:inherit}
                     </div>
                     <div>
                       <label style="display:block;font-size:12px;color:var(--onv);margin-bottom:5px">Confirm</label>
-                      <input type="password" style="width:100%;background:var(--s1);border:1px solid var(--outv);border-radius:12px;color:var(--on);padding:12px 14px;outline:none">
+                      <input type="password" value="{{ confirmPassword }}" onChange="{{ setConfirmPassword }}" style="width:100%;background:var(--s1);border:1px solid var(--outv);border-radius:12px;color:var(--on);padding:12px 14px;outline:none">
+                      <p style="margin:6px 0 0;font-size:12px;color:{{ confirmColor }}">{{ confirmMessage }}</p>
                     </div>
                     <div>
                       <div style="height:6px;border-radius:3px;background:var(--s1);overflow:hidden"><div style="{{ strengthBarStyle }}"></div></div>
@@ -353,7 +354,19 @@ input,select,button,textarea{font-family:inherit;font-size:inherit}
                     </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
                       <label style="display:flex;align-items:center;gap:11px;color:var(--onv);cursor:pointer"><input type="checkbox" style="width:18px;height:18px;accent-color:var(--p)"> Use keyfiles</label>
-                      <label style="display:flex;align-items:center;gap:11px;color:var(--onv);cursor:pointer"><input type="checkbox" style="width:18px;height:18px;accent-color:var(--p)"> Use PIM</label>
+                      <label style="display:flex;align-items:center;gap:11px;color:var(--onv);cursor:pointer"><input type="checkbox" checked="{{ usePim }}" onChange="{{ toggleUsePim }}" style="width:18px;height:18px;accent-color:var(--p)"> Use PIM</label>
+                    </div>
+                    <sc-if value="{{ usePim }}">
+                      <div>
+                        <label style="display:block;font-size:12px;color:var(--onv);margin-bottom:5px">PIM</label>
+                        <input type="number" min="0" max="65535" value="{{ wizardPim }}" onChange="{{ setWizardPim }}" style="width:100%;background:var(--s1);border:1px solid var(--outv);border-radius:12px;color:var(--on);padding:12px 14px;outline:none">
+                        <p style="margin:6px 0 0;font-size:12px;color:var(--onv)">{{ pimMessage }}</p>
+                      </div>
+                    </sc-if>
+                    <div>
+                      <label style="display:block;font-size:12px;color:var(--onv);margin-bottom:5px">Volume label</label>
+                      <input type="text" maxlength="11" value="{{ wizardLabel }}" onChange="{{ setWizardLabel }}" style="width:100%;background:var(--s1);border:1px solid var(--outv);border-radius:12px;color:var(--on);padding:12px 14px;outline:none">
+                      <p style="margin:6px 0 0;font-size:12px;color:var(--onv)">Up to 11 characters, stored in the FAT32 boot sector.</p>
                     </div>
                   </div>
                 </sc-if>
@@ -1468,6 +1481,7 @@ class Component extends DCLogic {
     driveRows: [], drivesError: null, drivesQueriedAt: null,
     benchmarkResult: null, benchmarkError: null, benchmarkRunning: false,
     propsVolume: '', propsPassword: '', propsPim: '', propsInfo: null, propsUsage: null, propsUsageError: null, propsError: null, propsBusy: false,
+    confirmPassword: '', usePim: false, wizardPim: '0', wizardLabel: 'ENCRYPTED',
     settingsTab: 'appearance', settingsSearch: '', settingsRegex: false, settingsRegexOpen: false, settingsRegexPattern: '', settingsRegexFlags: 'i',
     logoPreset: 'Material blue', logoCustomData: '', logoToken: '', logoFit: 'Contain', logoBackground: '#0842a0', logoFocalX: 50, logoFocalY: 50, logoCropZoom: 100, logoSizePreviews: [], logoStatus: 'Using the shipped Material Encryption logo.',
     converterSearch: '', converterRegex: false, converterRegexOpen: false, converterRegexPattern: '', converterRegexFlags: 'i', converterCategory: 'Documents/PDF', converterCategorySearch: '', converterCategoryRegex: false, converterCategoryRegexOpen: false, converterCategoryRegexPattern: '', converterCategoryRegexFlags: 'i', converterRegistry: [], converterRegistryLoading: false, conversionTarget: '', conversionOutput: '', conversionDestinationToken: '', conversionBusy: false, conversionPlan: null, conversionQueue: [], conversionPdfInputTokens: [],
@@ -1913,6 +1927,9 @@ class Component extends DCLogic {
     const volume = String(this.state.volumePath || '').trim();
     if (!volume) { this.setState({ wizardError: 'Choose a container path on the Volume Location step first.' }); return; }
     if (!this.state.newPassword) { this.setState({ wizardError: 'Enter a password on the Volume Password step first.' }); return; }
+    if (this.state.confirmPassword !== this.state.newPassword) { this.setState({ wizardError: 'The password and its confirmation do not match.' }); return; }
+    const pim = this.state.usePim ? Number(this.state.wizardPim) : 0;
+    if (!Number.isSafeInteger(pim) || pim < 0 || pim > 65535) { this.setState({ wizardError: 'PIM must be a whole number between 0 and 65535.' }); return; }
     const sizeBytes = this.wizardSizeBytes();
     if (!Number.isFinite(sizeBytes)) { this.setState({ wizardError: 'Enter the volume size as a number.' }); return; }
     const minimum = this.state.volumeCaps ? this.state.volumeCaps.minimumBytes : 64 * 1024 * 1024;
@@ -1925,8 +1942,8 @@ class Component extends DCLogic {
         sizeBytes,
         cipher: this.state.dd.cipher,
         prf: this.state.dd.hash,
-        pim: 0,
-        volumeLabel: 'ENCRYPTED',
+        pim,
+        volumeLabel: (this.state.wizardLabel || 'ENCRYPTED').slice(0, 11),
         filesystem: this.state.dd.filesystem,
         overwrite: false
       });
@@ -2601,6 +2618,17 @@ class Component extends DCLogic {
         ['Open in new tab', () => this.setState(st => ({ tabs: [...st.tabs, { id: 't' + Date.now(), label: meta[1], view: s.view, pinned: false, group: 'Daily' }] }))]
       ]),
 
+      confirmPassword: s.confirmPassword,
+      setConfirmPassword: (e) => this.setState({ confirmPassword: e.target.value }),
+      confirmMessage: !s.confirmPassword ? 'Re-enter the password to confirm it.' : (s.confirmPassword === s.newPassword ? 'The passwords match.' : 'The passwords do not match.'),
+      confirmColor: !s.confirmPassword ? 'var(--onv)' : (s.confirmPassword === s.newPassword ? 'var(--ok)' : 'var(--err)'),
+      usePim: s.usePim,
+      toggleUsePim: () => this.setState({ usePim: !s.usePim, wizardPim: '0' }),
+      wizardPim: s.wizardPim,
+      setWizardPim: (e) => this.setState({ wizardPim: e.target.value }),
+      pimMessage: 'A personal iterations multiplier. 0 uses the standard 500,000 iterations; any other value uses 15,000 + PIM x 1,000, and must be entered every time this volume is opened.',
+      wizardLabel: s.wizardLabel,
+      setWizardLabel: (e) => this.setState({ wizardLabel: String(e.target.value).toUpperCase().slice(0, 11) }),
       wizardIsLocation: s.wizardStep === 1, wizardIsSize: s.wizardStep === 3, wizardIsPassword: s.wizardStep === 4,
       volumeSize: s.volumeSize, setVolumeSize: (e) => this.setState({ volumeSize: e.target.value }),
       destinationSpace: (() => {
