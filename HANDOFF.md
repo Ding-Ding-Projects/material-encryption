@@ -8,7 +8,7 @@ As of 0.1.10 the application performs its own cryptography. `src/main/volume-for
 
 One capability is not implemented in user space: assigning a drive letter needs a kernel-mode filesystem driver, and Windows will not load an unsigned one. `scripts/build-driver.ps1` builds that driver from the VeraCrypt source and verifies the artifact, but loading it requires the machine's owner to disable driver signature enforcement themselves. The application detects an installed VeraCrypt for mounting and says plainly when it is absent; it never installs anything.
 
-Package 0.1.9 expanded the application to 14 destinations. It adds a categorized local File Converter with PDF tooling and a persistent bounded-concurrency queue, plus Ollama Studio for local runtime discovery, official model/tag inventory, evidence-based PC fit, model downloads, chat, reviewed harness profiles, configuration snapshots, rollback, and restore.
+Package 0.1.9 expanded the application to 14 destinations, adding a categorized local File Converter with PDF tooling and a persistent bounded-concurrency queue, plus Ollama Studio. Package 0.1.10 replaced the surfaces that were still showing prototype data with real ones: the Volumes table reads live drive letters, the Volume Creation Wizard creates containers with measured progress, Performance & Tools measures throughput instead of quoting it, and Volume Properties reads the engine's own header.
 
 ## Implemented source inventory
 
@@ -20,33 +20,47 @@ Package 0.1.9 expanded the application to 14 destinations. It adds a categorized
 
 ## Current local-check boundary
 
-The integrated package `0.1.9` has 55 passing Node tests:
+The integrated package `0.1.10` has 87 passing Node tests:
 
 | Test file | Tests |
 |---|---:|
-| `tests/veracrypt.test.mjs` | 3 |
-| `tests/totp.test.mjs` | 3 |
-| `tests/logo-service.test.mjs` | 5 |
+| `tests/volume-engine.test.mjs` | 10 |
+| `tests/crypto-ciphers.test.mjs` | 10 |
+| `tests/fat32.test.mjs` | 8 |
 | `tests/file-converter.test.mjs` | 10 |
-| `tests/converter-bridge-contract.test.mjs` | 6 |
 | `tests/pdf-tools.test.mjs` | 10 |
 | `tests/ollama-manager.test.mjs` | 13 |
-| `tests/ollama-bridge-contract.test.mjs` | 5 |
-| **Total** | **55** |
+| `tests/converter-bridge-contract.test.mjs` | 7 |
+| `tests/logo-service.test.mjs` | 6 |
+| `tests/benchmark.test.mjs` | 4 |
+| `tests/veracrypt.test.mjs` | 3 |
+| `tests/totp.test.mjs` | 3 |
+| `tests/ollama-bridge-contract.test.mjs` | 3 |
+| **Total** | **87** |
 
-`npm test` completed with 55/55 passing, and `npm run test:all` is green. These are local checks; they do not substitute for installer or hosted-release verification.
+`npm run test:all` is green across brand, design coverage, security, workflow, packaging and the hand-written completeness inventory (16 gates, 12 suites, 14 capabilities).
+
+## Runtime verification, and why it is separate
+
+Node links OpenSSL; the packaged application links Electron's BoringSSL, which provides no XTS cipher at all. A suite that runs only under Node cannot see that difference, and every AES container was briefly unopenable in the shipped build while all tests passed. Unit tests are therefore not evidence about the packaged artifact, and three checks are run against the built application instead:
+
+- `npm run verify:wizard` — drives the Volume Creation Wizard with real mouse and keyboard events through the debugging protocol, types every value, presses Create, and reads the result back with the engine. 22 checks.
+- The engine end-to-end pass — create, open, wrong-password refusal, folder creation, re-key with data intact, backup-header recovery, and absence of plaintext on disk. 14 checks.
+- The lane pass — benchmark measurement, null rates for unavailable ciphers, wizard capability source, and absence of the previously fabricated values in the live DOM. 4 checks.
+
+Synthetic DOM events do not work against this renderer: a dispatched `.click()` and a directly assigned input value are both ignored, so a harness built on them presses nothing while reporting success. Use the debugging protocol's input domain.
 
 ## Capture and release status
 
-The checked-in `docs/assets/runtime/capture-manifest.json` is dated `2026-08-12` and records 36 states covering all 14 destinations: 24 packaged UI interactions, one actual bridge/runtime observation (healthy local Ollama `v0.32.9`), and 11 seeded visual fixtures. The fixture images are renderer-only evidence and do not prove live conversion, model catalog/download, chat, harness, restore, or Ollama-service behaviour.
+`docs/assets/runtime/capture-manifest.json` records 36 states covering all 14 destinations, regenerated from the packaged build at the released commit: 24 packaged UI interactions, one actual bridge/runtime observation, and 11 seeded visual fixtures. The fixture images are renderer-only evidence and do not prove live conversion, model catalog/download, chat, harness, restore, or Ollama-service behaviour.
 
-No current installer, new release, hosted-site update, or remote CI result is claimed here. The next owner must:
+## Published baseline
 
-1. integrate all source and documentation changes;
-2. package the application and, if the capture matrix changes, refresh all 14 destinations through the isolated hidden-desktop route while preserving the fixture evidence boundary;
-4. build and verify the unsigned Squirrel.Windows artifacts;
-5. publish and verify the exact final commit, unique release, assets, timing, line evidence, and documentation site.
+Release `v0.1.10-build.24` targets commit `31e81162e4108aabab51786cbadccc4f3a7bfbbd`, is non-draft, and carries the unsigned installer, the full update package, `RELEASES`, build evidence and the required catalog image. The installer was downloaded and its SHA-256 compared against the release notes: `6044BEE11B52DC438EBA896B0A4ECD9D5613F0A0CD485D5E956ABC722EC84CEF`, matching, and reporting `NotSigned` as the permanent no-signing policy requires. Remote CI for that commit is green.
 
-## Previous published baseline
+## Known boundaries for the next owner
 
-Release `v0.1.2` targeted commit `f649cf6c9e3239bf128fcc4292da90ee952eed05`. That historical release remains the latest published baseline until a newer release is independently verified. Its evidence is not reused as proof for package 0.1.9.
+- Assigning a drive letter needs a loaded kernel driver. `scripts/build-driver.ps1` builds one from source and verifies it, but Windows will not load it until the machine's owner disables driver signature enforcement themselves. Nothing in this project does that, and the user-mode side that would drive the driver over `DeviceIoControl` is not built; it needs a native addon.
+- Camellia and Kuznyechik are not ported. They are reported as unavailable with a reason and never silently substituted.
+- Favorites, History and notifications render empty rather than fabricated. They are unimplemented, not broken.
+- Squirrel packaging previously failed about half the time inside its bundled 7-Zip; the cause was the `remoteReleases` delta sync corrupting the full package, and removing it fixed the build at the cost of the delta package. Tracked as issue #6.
