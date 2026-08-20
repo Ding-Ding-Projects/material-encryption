@@ -5,6 +5,8 @@ param(
   [string]$PackageVersion
 )
 
+. (Join-Path $PSScriptRoot 'import-windows-powershell-modules.ps1')
+
 $resolvedDirectory = (Resolve-Path -LiteralPath $ArtifactDirectory -ErrorAction Stop).Path
 $setupName = "MaterialEncryption-Setup-$PackageVersion-x64.exe"
 $fullPackageName = "material-encryption-$PackageVersion-full.nupkg"

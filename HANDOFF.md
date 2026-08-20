@@ -64,3 +64,13 @@ Release `v0.1.10-build.24` targets commit `31e81162e4108aabab51786cbadccc4f3a7bf
 - Camellia and Kuznyechik are not ported. They are reported as unavailable with a reason and never silently substituted.
 - Favorites, History and notifications render empty rather than fabricated. They are unimplemented, not broken.
 - Squirrel packaging previously failed about half the time inside its bundled 7-Zip; the cause was the `remoteReleases` delta sync corrupting the full package, and removing it fixed the build at the cost of the delta package. Tracked as issue #6.
+
+## Windows PowerShell verifier repair
+
+The unsigned-installer, Squirrel release-linkage, and packaged-icon helpers now import the inbox
+Windows PowerShell Utility and Security manifests from their exact `System32` locations. This fixes
+the inherited-`PSModulePath` case where a PowerShell 7 parent made Windows PowerShell resolve an
+incompatible Core-edition module and then report `Get-FileHash` as unavailable. The repair changes
+no persistent execution policy, module installation, signing setting, artifact name, or package
+contents. `scripts/verify-package-manifest.mjs` fails when any of the three verifiers loses the
+pinned bootstrap.
