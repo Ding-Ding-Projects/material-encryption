@@ -2,6 +2,11 @@
 
 `build.bat` restores locked dependencies, regenerates the renderer, runs local checks, and builds the unpacked application. Silent modes are `/s`, `--silent`, and `SILENT=1`. `build-installer.bat` calls that route and creates unsigned Squirrel.Windows setup and update artifacts.
 
+The installer verification helpers import the inbox Windows PowerShell Utility and Security module
+manifests by their exact `System32` paths. This keeps `Get-FileHash` and
+`Get-AuthenticodeSignature` available even when a PowerShell 7 parent prepends incompatible module
+directories to `PSModulePath`; no machine-wide module or execution-policy setting is changed.
+
 The installer path resolves package version `0.1.10`, which is monotonic beyond the published `0.1.8` baseline. It verifies the exact `MaterialEncryption-Setup-0.1.10-x64.exe`, `RELEASES`, and `material-encryption-0.1.10-full.nupkg` names. When an older full package is available through the fixed public update feed, it also requires `material-encryption-0.1.10-delta.nupkg`. The verifier checks every current update package against the SHA-1 and byte length recorded in `RELEASES`, checks unsigned status, and reports SHA-256. It never publishes, tags, pushes, or creates a release.
 
 The logo source produces a nine-size Windows ICO. Packaging keeps signer discovery disabled, applies only the reviewed icon resource through the deterministic local resource path, extracts the icon from the built executable, and proves the executable remains unsigned.
