@@ -4,6 +4,8 @@ param(
   [string]$Output = 'dist\packaged-executable-icon.png'
 )
 
+. (Join-Path $PSScriptRoot 'import-windows-powershell-modules.ps1')
+
 $resolvedExecutable = (Resolve-Path -LiteralPath $Executable).Path
 $resolvedOutput = [System.IO.Path]::GetFullPath((Join-Path (Get-Location) $Output))
 $outputDirectory = Split-Path -Parent $resolvedOutput

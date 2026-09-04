@@ -31,4 +31,13 @@ assert.equal(manifest.scripts?.['dist:unsigned'], 'electron-builder --win squirr
 assert.ok(!/test|lint/i.test(manifest.scripts['dist:unsigned']), 'The workflow packaging primitive must not run tests or lint.');
 assert.match(manifest.scripts?.dist || '', /npm run dist:unsigned/, 'The local dist command must delegate to the reviewed unsigned primitive.');
 
+const moduleBootstrap = await readFile('scripts/import-windows-powershell-modules.ps1', 'utf8');
+for (const moduleName of ['Microsoft.PowerShell.Utility', 'Microsoft.PowerShell.Security']) {
+  assert.match(moduleBootstrap, new RegExp(`System32\\\\WindowsPowerShell\\\\v1\\.0\\\\Modules[\\s\\S]*${moduleName}`), `${moduleName} must resolve from the Windows PowerShell inbox module root.`);
+}
+for (const verifier of ['verify-unsigned-installer.ps1', 'verify-squirrel-release.ps1', 'verify-packaged-icon.ps1']) {
+  const source = await readFile(`scripts/${verifier}`, 'utf8');
+  assert.match(source, /^\. \(Join-Path \$PSScriptRoot 'import-windows-powershell-modules\.ps1'\)$/m, `${verifier} must import the pinned Windows PowerShell modules.`);
+}
+
 console.log(`PASS: package ${manifest.version} is newer than 0.1.8 and keeps the reviewed unsigned Squirrel.Windows contract.`);

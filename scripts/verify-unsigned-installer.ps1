@@ -4,8 +4,7 @@ param(
 )
 
 $resolved = (Resolve-Path -LiteralPath $Executable -ErrorAction Stop).Path
-$securityModule = Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Security\Microsoft.PowerShell.Security.psd1'
-Import-Module -Name $securityModule -Force -ErrorAction Stop
+. (Join-Path $PSScriptRoot 'import-windows-powershell-modules.ps1')
 $signature = (Get-AuthenticodeSignature -LiteralPath $resolved).Status
 if ($signature -ne 'NotSigned') {
   throw "The installer signature state is $signature; policy requires NotSigned."
